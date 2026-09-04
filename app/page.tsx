@@ -1,70 +1,78 @@
 'use client'
 
-const services = [
-  { n: '01', title: 'Consulting', text: 'Practical expertise for business, technology and growth challenges.' },
-  { n: '02', title: 'Talent Solutions', text: 'Find, assess and build teams around the capabilities your business needs.' },
-  { n: '03', title: 'Specialist Services', text: 'Flexible support for projects that need focused skills and execution.' },
+const expertise = [
+  ['01', 'Technology Consulting', 'Practical technology strategy, implementation and support for growing organizations.'],
+  ['02', 'Talent Solutions', 'Strategic staffing and talent solutions that connect businesses with the capabilities they need.'],
+  ['03', 'Digital & Web', 'Modern web and digital solutions designed around customer experience and business outcomes.'],
+  ['04', 'Data & Analytics', 'Turn business data into clearer decisions through analytics, reporting and insight.'],
+  ['05', 'Cloud Solutions', 'Flexible cloud and infrastructure support designed for reliability, scale and efficiency.'],
+  ['06', 'Quality & Delivery', 'Focused quality assurance and delivery support that helps teams ship with confidence.'],
 ]
 
-const steps = [
-  ['01', 'Tell us what you need', 'Share the challenge, role or capability you are looking for.'],
-  ['02', 'We build the right approach', 'We shape the right consulting, talent or specialist solution.'],
-  ['03', 'We deliver together', 'You get a focused partner and a clear path from need to outcome.'],
+const industries = [
+  ['Healthcare', 'Technology and talent solutions for organizations where reliability and data matter.'],
+  ['Financial Services', 'Specialist capabilities for complex, regulated and fast-moving business environments.'],
+  ['Government', 'Practical technology and workforce support for public-sector initiatives.'],
+  ['Energy & Utilities', 'Digital, data and specialist talent support for operationally critical environments.'],
+  ['Technology', 'Engineering and specialist talent solutions for teams building what is next.'],
+  ['Growing Businesses', 'Flexible consulting and talent support that scales with your priorities.'],
+]
+
+const strengths = [
+  ['01', 'Industry-aware expertise', 'We start with the business problem, understand the context and shape the solution around it.'],
+  ['02', 'Right-fit talent', 'We focus on capability, experience and fit — not simply filling a vacancy.'],
+  ['03', 'Flexible engagement', 'Use us for a focused requirement, a specialist project or an ongoing capability need.'],
+  ['04', 'Long-term partnership', 'We aim to become a dependable extension of your team, not just another vendor.'],
 ]
 
 export default function Home() {
   return <>
     <nav className="nav">
       <div className="container navInner">
-        <a className="brand" href="#top"><span className="mark">R</span><span><strong>ROWBOAT</strong> <span className="brandLight">CONSULTING SERVICES</span></span></a>
+        <a className="brand" href="#top"><span className="mark">R</span><span><strong>ROWBOAT</strong><small>CONSULTING SERVICES</small></span></a>
         <div className="navLinks">
-          <a href="#services">Services</a><a href="#careers">Careers</a><a href="#talent">Hire Talent</a><a href="#about">About</a>
-          <a className="navCta" href="mailto:careers@rowboatcs.com?subject=ROWBOAT%20Consulting%20Services">Contact us <span>↗</span></a>
+          <a href="#expertise">Expertise</a><a href="#industries">Industries</a><a href="#about">About</a><a href="#careers">Careers</a><a className="navCta" href="#contact">Contact us <span>↗</span></a>
         </div>
-        <a className="mobileMenu" href="#careers" aria-label="Go to careers">☰</a>
+        <a className="mobileMenu" href="#contact" aria-label="Go to contact">☰</a>
       </div>
     </nav>
 
     <main id="top">
-      <section className="hero">
-        <div className="container heroGrid">
+      <section className="hero corporateHero">
+        <div className="heroBackdrop"></div>
+        <div className="container heroContent">
           <div className="heroCopy">
-            <div className="eyebrow">Consulting · Talent · Careers</div>
-            <h1>Building better teams.<br/><em>Creating better</em> opportunities.</h1>
-            <p>ROWBOAT CONSULTING SERVICES helps businesses solve complex needs through consulting, talent and specialist services.</p>
-            <div className="heroActions"><a className="btn btnPrimary" href="#services">Explore our services <span>→</span></a><a className="btn btnLight" href="#careers">View careers</a></div>
-            <div className="trustLine"><span className="dot"></span><span>India-first · Built for ambitious businesses</span></div>
+            <div className="eyebrow">Consulting · Technology · Talent</div>
+            <h1>Solutions built around <em>your business.</em></h1>
+            <p>ROWBOAT CONSULTING SERVICES helps organizations solve technology, talent and delivery challenges with practical expertise and a people-first approach.</p>
+            <div className="heroActions"><a className="btn btnPrimary" href="#expertise">Explore our expertise <span>→</span></a><a className="textButton" href="#contact">Talk to us <span>↗</span></a></div>
           </div>
-          <div className="heroVisual" aria-hidden="true">
-            <div className="visualCard mainCard"><div className="cardTop"><span className="miniMark">R</span><span>ROWBOAT</span><span className="status">● ACTIVE</span></div><div className="visualTitle">People. Expertise.<br/><strong>Better outcomes.</strong></div><div className="signal"><span></span><span></span><span></span><span></span><span></span></div><div className="visualFoot"><span>Consulting</span><span>Talent</span><span>Specialists</span></div></div>
-            <div className="floatingCard"><strong>People-first</strong><span>solutions that scale</span></div>
-            <div className="circleGlow"></div>
-          </div>
+          <div className="heroPanel"><div className="panelKicker">ROWBOAT / 01</div><div className="heroPanelTitle">Your challenge.<br/><strong>Our capability.</strong></div><div className="heroLines"><span></span><span></span><span></span><span></span></div><div className="heroPanelBottom"><span>Strategy</span><span>Technology</span><span>People</span></div></div>
         </div>
       </section>
 
-      <section className="introStrip"><div className="container introGrid"><div><strong>One partner.</strong><span>Multiple ways to move your business forward.</span></div><div className="stripStats"><span><b>01</b> Consulting</span><span><b>02</b> Talent</span><span><b>03</b> Specialist</span></div></div></section>
+      <section className="statement"><div className="container statementGrid"><div className="eyebrow">What we do</div><h2>We bring together <em>people, technology and practical thinking</em> to help businesses move forward.</h2><p>From specialist consulting to talent solutions, we build focused partnerships around the outcomes that matter.</p></div></section>
 
-      <section className="section" id="services"><div className="container">
-        <div className="sectionHead"><div><div className="eyebrow">What we do</div><h2>Capability when you need it.</h2></div><p>Focused services designed around real business needs — not one-size-fits-all packages.</p></div>
-        <div className="serviceGrid">{services.map(([n, title, text]) => <article className="service" key={n}><div className="serviceNo">{n}</div><h3>{title}</h3><p>{text}</p><a href="#talent">Learn more <span>↗</span></a></article>)}</div>
+      <section className="section" id="expertise"><div className="container">
+        <div className="sectionHead"><div><div className="eyebrow">Our expertise</div><h2>Capability across the things that matter.</h2></div><p>Focused expertise for organizations navigating growth, transformation and the need for great people.</p></div>
+        <div className="expertiseGrid">{expertise.map(([n,title,text]) => <article className="expertise" key={n}><span>{n}</span><h3>{title}</h3><p>{text}</p><a href="#contact">Learn more <b>↗</b></a></article>)}</div>
       </div></section>
 
-      <section className="section careersSection" id="careers"><div className="container">
-        <div className="careersCard"><div><div className="eyebrow">ROWBOAT JOBS · CAREERS</div><h2>Great work starts with the right opportunity.</h2><p>We are building our career network. Open positions will be published here when available.</p></div><div className="careerStatus"><span className="statusRing">✓</span><strong>No open positions</strong><span>Check back soon or share your profile.</span><a className="btn btnLight" href="mailto:careers@rowboatcs.com?subject=Career%20Profile%20-%20ROWBOAT">Share your profile →</a></div></div>
+      <section className="section lightSection" id="industries"><div className="container">
+        <div className="sectionHead"><div><div className="eyebrow">Industries</div><h2>Experience where your business needs it.</h2></div><p>We adapt our approach to the realities of your sector, operating environment and goals.</p></div>
+        <div className="industryGrid">{industries.map(([title,text],i) => <article className="industry" key={title}><span>0{i+1}</span><h3>{title}</h3><p>{text}</p></article>)}</div>
       </div></section>
 
-      <section className="section" id="talent"><div className="container">
-        <div className="sectionHead"><div><div className="eyebrow">Work with us</div><h2>Let’s solve the right problem.</h2></div><p>Whether you need a team member, specialist or a fresh perspective, start with a conversation.</p></div>
-        <div className="split"><div className="panel dark"><div className="panelLabel">FOR EMPLOYERS</div><h3>Need great people?</h3><p>Tell us what you need and we’ll help shape the right talent solution around it.</p><a className="btn btnWhite" href="mailto:careers@rowboatcs.com?subject=Hire%20Talent%20with%20ROWBOAT">Hire talent <span>→</span></a></div><div className="panel green"><div className="panelLabel">FOR CANDIDATES</div><h3>Keep your next move open.</h3><p>Share your experience and interests for future opportunities with ROWBOAT.</p><a className="btn btnPrimary" href="mailto:careers@rowboatcs.com?subject=Career%20Profile%20-%20ROWBOAT">Contact careers <span>→</span></a></div></div>
+      <section className="section" id="about"><div className="container">
+        <div className="aboutIntro"><div><div className="eyebrow">Why ROWBOAT</div><h2>A partner that stays close to the problem.</h2></div><p>We believe the best consulting relationships are built on understanding, accountability and useful outcomes. Our model combines specialist expertise with flexible talent solutions so clients can get the right capability at the right time.</p></div>
+        <div className="strengthGrid">{strengths.map(([n,title,text]) => <article className="strength" key={n}><span>{n}</span><h3>{title}</h3><p>{text}</p></article>)}</div>
       </div></section>
 
-      <section className="section processSection"><div className="container"><div className="eyebrow">How it works</div><h2>Simple by design.</h2><div className="steps">{steps.map(([n, title, text]) => <div className="step" key={n}><span>{n}</span><h3>{title}</h3><p>{text}</p></div>)}</div></div></section>
+      <section className="careersSection" id="careers"><div className="container careersWrap"><div><div className="eyebrow">ROWBOAT JOBS · CAREERS</div><h2>Build your next chapter with us.</h2><p>We are growing our network of professionals and will publish opportunities as they become available.</p></div><div className="careerBox"><div className="careerIcon">R</div><strong>No open positions right now.</strong><span>Want to be considered for future opportunities?</span><a className="btn btnWhite" href="mailto:careers@rowboatcs.com?subject=Career%20Profile%20-%20ROWBOAT">Share your profile →</a></div></div></section>
 
-      <section className="section aboutSection" id="about"><div className="container aboutGrid"><div><div className="eyebrow">About ROWBOAT</div><h2>Good businesses need good people — and the right thinking.</h2></div><div><p>ROWBOAT CONSULTING SERVICES brings consulting, talent and specialist capabilities together to help businesses navigate important moments with confidence.</p><p>Our approach is practical, people-first and built to grow with the needs of our clients.</p><a className="textLink" href="mailto:careers@rowboatcs.com?subject=Connect%20with%20ROWBOAT">Start a conversation <span>↗</span></a></div></div></section>
-
-      <section className="contactBand"><div className="container contactInner"><div><div className="eyebrow">Have a challenge?</div><h2>Let’s talk about what’s next.</h2></div><a className="btn btnWhite" href="mailto:careers@rowboatcs.com?subject=ROWBOAT%20Consulting%20Services%20Enquiry">Contact ROWBOAT →</a></div></section>
+      <section className="contactSection" id="contact"><div className="container contactGrid"><div><div className="eyebrow">Start a conversation</div><h2>Tell us what you are trying to achieve.</h2><p>Whether you need consulting expertise, specialist talent or a partner for an important initiative, we would like to hear from you.</p></div><a className="contactCard" href="mailto:careers@rowboatcs.com?subject=ROWBOAT%20Consulting%20Services%20Enquiry"><span>Get in touch</span><strong>careers@rowboatcs.com</strong><b>↗</b></a></div></section>
     </main>
-    <footer className="footer"><div className="container footerInner"><span>© 2026 ROWBOAT CONSULTING SERVICES</span><span>India-first · Globally extensible</span></div></footer>
+
+    <footer className="footer"><div className="container footerTop"><div className="footerBrand"><span className="mark">R</span><div><strong>ROWBOAT</strong><small>CONSULTING SERVICES</small></div></div><div className="footerLinks"><a href="#expertise">Expertise</a><a href="#industries">Industries</a><a href="#about">About</a><a href="#careers">Careers</a><a href="#contact">Contact</a></div></div><div className="container footerBottom"><span>© 2026 ROWBOAT CONSULTING SERVICES</span><span>Consulting · Technology · Talent</span></div></footer>
   </>
 }
