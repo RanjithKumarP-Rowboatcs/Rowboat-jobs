@@ -1,20 +1,26 @@
-# ROWBOAT JOBS V1
+# ROWBOAT CONSULTING SERVICES
 
-India-first jobs, projects and recruitment platform.
+Company website for ROWBOAT CONSULTING SERVICES.
+
+## Website positioning
+- **Primary company name:** ROWBOAT CONSULTING SERVICES
+- **Careers section:** ROWBOAT JOBS · CAREERS
+- **Current careers state:** No open positions are published; visitors can share their profile for future opportunities.
+
+## Services
+- Consulting
+- Talent Solutions
+- Specialist Services
 
 ## Stack
 - Next.js + TypeScript
-- Supabase
+- Supabase foundation
 - Vercel
-
-## Product foundation
-Public opportunity search, job details, employer intake, recruiter-ready Talent Hub/ATS schema, candidate resumes, client CRM, requirements, matching, submissions, interviews and placements.
 
 ## Local setup
 1. `npm install`
-2. Copy `.env.local.example` to `.env.local`
-3. Add your Supabase URL and publishable key
-4. Run `supabase/schema.sql` in Supabase SQL Editor
-5. `npm run dev`
+2. Copy `.env.example` to `.env.local`
+3. Add your Supabase URL and publishable key when database features are enabled
+4. `npm run dev`
 
-Government Jobs is represented as a feature flag and is off by default.
+The public website intentionally does not display a jobs listing until open positions are ready to publish.
