@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'ROWBOAT JOBS | Jobs, Projects & Talent',
-  description: 'India-first jobs, freelance projects and talent solutions by ROWBOAT.',
+  title: 'ROWBOAT CONSULTING SERVICES | Consulting, Talent & Careers',
+  description: 'ROWBOAT CONSULTING SERVICES — consulting, talent and career opportunities.',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
