@@ -1,6 +1,6 @@
-import './opportunities.css'
 'use client'
 
+import './opportunities.css'
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 
 interface Job {
