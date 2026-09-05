@@ -1,8 +1,9 @@
-const DEFAULT_SUPABASE_URL = 'https://zpcnottwgelfiuqulioc.supabase.co'
+const SUPABASE_URL = 'https://zpcnottwgelfiuqulioc.supabase.co'
 
+// The Supabase project URL is public configuration. Keep it fixed here so a
+// malformed Vercel environment value can never take the admin site offline.
 export function getSupabaseUrl() {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  return value && /^https?:\/\//i.test(value) ? value : DEFAULT_SUPABASE_URL
+  return SUPABASE_URL
 }
 
 export function getSupabasePublishableKey() {
