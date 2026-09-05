@@ -65,6 +65,11 @@ create policy "Public can read open jobs"
 on public.jobs for select to anon, authenticated
 using (status = 'open');
 
+drop policy if exists "Admin can read all jobs" on public.jobs;
+create policy "Admin can read all jobs"
+on public.jobs for select to authenticated
+using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
 drop policy if exists "Admin can insert jobs" on public.jobs;
 create policy "Admin can insert jobs"
 on public.jobs for insert to authenticated
