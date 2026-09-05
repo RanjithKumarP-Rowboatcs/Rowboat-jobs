@@ -1,0 +1,47 @@
+/* Final brand polish: keep the refined horizontal logo crisp and balanced. */
+.brandLogo,
+.footerLogo {
+  width: 330px;
+  max-width: 100%;
+  height: auto;
+  max-height: 66px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.brand {
+  width: 345px;
+}
+
+.footerBrand {
+  min-width: 330px;
+}
+
+section[id] {
+  scroll-margin-top: 96px;
+}
+
+.mobileMenu {
+  background: #123b32;
+  color: #fff;
+  border-radius: 3px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 850px) {
+  .brand {
+    width: 285px;
+  }
+
+  .brandLogo,
+  .footerLogo {
+    width: 275px;
+    max-height: 58px;
+  }
+
+  .footerBrand {
+    min-width: 0;
+  }
+}
