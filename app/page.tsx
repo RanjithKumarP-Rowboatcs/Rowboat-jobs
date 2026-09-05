@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 const industries = [
   ['Information Technology', 'Software, cloud, AI, data, cybersecurity, infrastructure and digital roles.'],
@@ -35,18 +35,8 @@ export default function Home() {
     return matchesQuery && matchesIndustry
   }), [query, industry])
 
-  function handleContactSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = event.currentTarget
-    const data = new FormData(form)
-    const name = String(data.get('name') || '')
-    const email = String(data.get('email') || '')
-    const interest = String(data.get('interest') || '')
-    const message = String(data.get('message') || '')
-    const subject = `Rowboat enquiry: ${interest}`
-    const body = `Name: ${name}\nEmail: ${email}\nInterest: ${interest}\n\nMessage:\n${message}`
-    window.location.href = `mailto:careers@rowboatcs.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    setMessageStatus('Your email application should open with the enquiry prepared. Please press Send in your email app to complete it.')
+  function handleContactSubmit() {
+    setMessageStatus('Your enquiry is being prepared securely. If your email app does not open, email ranjith@rowboatcs.com directly.')
   }
 
   return <>
@@ -78,7 +68,7 @@ export default function Home() {
 
       <section className="careersSection" id="careers"><div className="container careersWrap"><div><div className="eyebrow">Careers at Rowboat</div><h2>We are building the platform as we go.</h2><p>When Rowboat Consulting Services has its own open positions, they will be published here. We will not create placeholder vacancies simply to make the site look complete.</p></div><div className="careerBox"><img src="/rowboat-mark.svg" alt=""/><strong>No current Rowboat openings.</strong><span>Check back for future opportunities.</span></div></div></section>
 
-      <section className="contactSection" id="contact"><div className="container"><div className="contactIntro"><div><div className="eyebrow">Contact Rowboat</div><h2>Let's connect.</h2><p>Whether you are a job seeker, employer, business partner or organization, tell us what you need.</p></div><div className="contactDetails"><span>General enquiries</span><a href="mailto:careers@rowboatcs.com">careers@rowboatcs.com</a></div></div><form className="contactForm" onSubmit={handleContactSubmit}><label>Name<input name="name" required placeholder="Your name"/></label><label>Email<input name="email" type="email" required placeholder="you@company.com"/></label><label>I'm interested in<select name="interest"><option>Finding opportunities</option><option>Posting a hiring requirement</option><option>Business partnership</option><option>General enquiry</option></select></label><label>Message<textarea name="message" required rows={5} placeholder="Tell us what you need..."></textarea></label><div className="formActions"><button className="btn btnPrimary" type="submit">Prepare enquiry ↗</button><span className="formNote">Your email app will open with the message ready to send.</span></div>{messageStatus && <p className="messageStatus" role="status">{messageStatus}</p>}</form></div></section>
+      <section className="contactSection" id="contact"><div className="container"><div className="contactIntro"><div><div className="eyebrow">Contact Rowboat</div><h2>Let's connect.</h2><p>Whether you are a job seeker, employer, business partner or organization, tell us what you need.</p></div><div className="contactDetails"><span>Enquiries</span><a href="mailto:ranjith@rowboatcs.com">ranjith@rowboatcs.com</a></div></div><form className="contactForm" action="https://formsubmit.co/ranjith@rowboatcs.com" method="POST" onSubmit={handleContactSubmit}><input type="hidden" name="_subject" value="ROWBOAT website enquiry"/><input type="hidden" name="_captcha" value="false"/><input type="hidden" name="_template" value="table"/><label>Name<input name="name" required placeholder="Your name" autoComplete="name"/></label><label>Email<input name="email" type="email" required placeholder="you@company.com" autoComplete="email"/></label><label>I'm interested in<select name="interest"><option>Finding opportunities</option><option>Posting a hiring requirement</option><option>Business partnership</option><option>General enquiry</option></select></label><label>Message<textarea name="message" required rows={5} placeholder="Tell us what you need..."></textarea></label><div className="formActions"><button className="btn btnPrimary" type="submit">Send enquiry ↗</button><span className="formNote">Your message will be sent to the Rowboat enquiries address.</span></div>{messageStatus && <p className="messageStatus" role="status">{messageStatus}</p>}</form></div></section>
     </main>
 
     <footer className="footer"><div className="container footerTop"><div className="footerBrand"><img className="footerLogo" src="/rowboat-logo.svg" alt="ROWBOAT CONSULTING SERVICES"/></div><div className="footerLinks"><a href="#opportunities">Opportunities</a><a href="#industries">Industries</a><a href="#government">Government</a><a href="#employers">Employers</a><a href="#careers">Careers</a><a href="#about">About</a><a href="#contact">Contact</a></div></div><div className="container footerBottom"><span>© 2026 ROWBOAT CONSULTING SERVICES</span><span>Every Industry. Every Opportunity. One Platform.</span></div></footer>
