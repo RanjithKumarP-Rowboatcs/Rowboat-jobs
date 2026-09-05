@@ -1,20 +1,22 @@
-/* Final brand polish: keep the refined horizontal logo crisp and balanced. */
+/* Final brand polish: use the complete horizontal Rowboat Consulting Services logo. */
 .brandLogo,
 .footerLogo {
-  width: 330px;
+  display: block;
+  width: 350px;
   max-width: 100%;
   height: auto;
-  max-height: 66px;
+  max-height: 67px;
   object-fit: contain;
   object-position: left center;
 }
 
 .brand {
-  width: 345px;
+  width: 365px;
+  flex: 0 0 365px;
 }
 
 .footerBrand {
-  min-width: 330px;
+  min-width: 350px;
 }
 
 section[id] {
@@ -30,15 +32,33 @@ section[id] {
   font-weight: 800;
 }
 
+@media (max-width: 1050px) {
+  .brand {
+    width: 320px;
+    flex-basis: 320px;
+  }
+
+  .brandLogo,
+  .footerLogo {
+    width: 305px;
+    max-height: 59px;
+  }
+
+  .footerBrand {
+    min-width: 305px;
+  }
+}
+
 @media (max-width: 850px) {
   .brand {
     width: 285px;
+    flex-basis: 285px;
   }
 
   .brandLogo,
   .footerLogo {
     width: 275px;
-    max-height: 58px;
+    max-height: 53px;
   }
 
   .footerBrand {
