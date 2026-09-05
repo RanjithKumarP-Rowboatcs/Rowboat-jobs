@@ -1,3 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '../../../../lib/supabase/server'
-export async function PATCH(request:NextRequest,context:{params:Promise<{id:string}>}){const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(!user)return NextResponse.json({error:'Sign in required'},{status:401});const {id}=await context.params;const {status}=await request.json();if(!['new','reviewing','shortlisted','rejected','hired'].includes(status))return NextResponse.json({error:'Invalid application status'},{status:400});const {data,error}=await supabase.from('applications').update({status}).eq('id',id).select('*').single();if(error)return NextResponse.json({error:error.message},{status:500});return NextResponse.json({application:data})}
+
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
+
+  const { id } = await context.params
+  const { status } = await request.json()
+  if (!['new', 'reviewing', 'shortlisted', 'rejected', 'hired'].includes(status)) {
+    return NextResponse.json({ error: 'Invalid application status' }, { status: 400 })
+  }
+
+  const { data, error } = await supabase
+    .from('rowboat_applications')
+    .update({ status })
+    .eq('id', id)
+    .select('*')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ application: data })
+}
