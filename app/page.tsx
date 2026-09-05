@@ -35,17 +35,26 @@ export default function Home() {
     return matchesQuery && matchesIndustry
   }), [query, industry])
 
-  function handleContactSubmit() {
-    setMessageStatus('Your enquiry is being prepared securely. If your email app does not open, email ranjith@rowboatcs.com directly.')
+  function handleContactSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    const name = String(form.get('name') || '')
+    const email = String(form.get('email') || '')
+    const interest = String(form.get('interest') || '')
+    const message = String(form.get('message') || '')
+    const subject = `ROWBOAT website enquiry — ${interest}`
+    const body = `Name: ${name}\nEmail: ${email}\nInterest: ${interest}\n\nMessage:\n${message}`
+    window.location.href = `mailto:ranjith@rowboatcs.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    setMessageStatus('Your email app has been opened with the enquiry addressed to ranjith@rowboatcs.com.')
   }
 
   return <>
     <nav className="nav"><div className="container navInner">
-      <a className="brand" href="#top" aria-label="ROWBOAT Jobs home"><img className="brandLogo" src="/rowboat-logo.svg" alt="ROWBOAT CONSULTING SERVICES"/></a>
+      <a className="brand" href="#top" aria-label="ROWBOAT Consulting Services home"><img className="brandLogo" src="/rowboat-logo.svg" alt="ROWBOAT CONSULTING SERVICES"/></a>
       <div className="navLinks">
         <a href="#opportunities">Opportunities</a><a href="#industries">Industries</a><a href="#government">Government</a><a href="#employers">Employers</a><a href="#about">About</a><a className="navCta" href="#contact">Contact ↗</a>
       </div>
-      <a className="mobileMenu" href="#opportunities" aria-label="Explore opportunities">☰</a>
+      <a className="mobileMenu" href="#opportunities" aria-label="Explore opportunities">Explore</a>
     </div></nav>
 
     <main id="top">
@@ -68,7 +77,7 @@ export default function Home() {
 
       <section className="careersSection" id="careers"><div className="container careersWrap"><div><div className="eyebrow">Careers at Rowboat</div><h2>We are building the platform as we go.</h2><p>When Rowboat Consulting Services has its own open positions, they will be published here. We will not create placeholder vacancies simply to make the site look complete.</p></div><div className="careerBox"><img src="/rowboat-mark.svg" alt=""/><strong>No current Rowboat openings.</strong><span>Check back for future opportunities.</span></div></div></section>
 
-      <section className="contactSection" id="contact"><div className="container"><div className="contactIntro"><div><div className="eyebrow">Contact Rowboat</div><h2>Let's connect.</h2><p>Whether you are a job seeker, employer, business partner or organization, tell us what you need.</p></div><div className="contactDetails"><span>Enquiries</span><a href="mailto:ranjith@rowboatcs.com">ranjith@rowboatcs.com</a></div></div><form className="contactForm" action="https://formsubmit.co/ranjith@rowboatcs.com" method="POST" onSubmit={handleContactSubmit}><input type="hidden" name="_subject" value="ROWBOAT website enquiry"/><input type="hidden" name="_captcha" value="false"/><input type="hidden" name="_template" value="table"/><label>Name<input name="name" required placeholder="Your name" autoComplete="name"/></label><label>Email<input name="email" type="email" required placeholder="you@company.com" autoComplete="email"/></label><label>I'm interested in<select name="interest"><option>Finding opportunities</option><option>Posting a hiring requirement</option><option>Business partnership</option><option>General enquiry</option></select></label><label>Message<textarea name="message" required rows={5} placeholder="Tell us what you need..."></textarea></label><div className="formActions"><button className="btn btnPrimary" type="submit">Send enquiry ↗</button><span className="formNote">Your message will be sent to the Rowboat enquiries address.</span></div>{messageStatus && <p className="messageStatus" role="status">{messageStatus}</p>}</form></div></section>
+      <section className="contactSection" id="contact"><div className="container"><div className="contactIntro"><div><div className="eyebrow">Contact Rowboat</div><h2>Let's connect.</h2><p>Whether you are a job seeker, employer, business partner or organization, tell us what you need.</p></div><div className="contactDetails"><span>Enquiries</span><a href="mailto:ranjith@rowboatcs.com">ranjith@rowboatcs.com</a></div></div><form className="contactForm" onSubmit={handleContactSubmit}><label>Name<input name="name" required placeholder="Your name" autoComplete="name"/></label><label>Email<input name="email" type="email" required placeholder="you@company.com" autoComplete="email"/></label><label>I'm interested in<select name="interest"><option>Finding opportunities</option><option>Posting a hiring requirement</option><option>Business partnership</option><option>General enquiry</option></select></label><label>Message<textarea name="message" required rows={5} placeholder="Tell us what you need..."></textarea></label><div className="formActions"><button className="btn btnPrimary" type="submit">Send enquiry ↗</button><span className="formNote">Your enquiry is addressed to ranjith@rowboatcs.com.</span></div>{messageStatus && <p className="messageStatus" role="status">{messageStatus}</p>}</form></div></section>
     </main>
 
     <footer className="footer"><div className="container footerTop"><div className="footerBrand"><img className="footerLogo" src="/rowboat-logo.svg" alt="ROWBOAT CONSULTING SERVICES"/></div><div className="footerLinks"><a href="#opportunities">Opportunities</a><a href="#industries">Industries</a><a href="#government">Government</a><a href="#employers">Employers</a><a href="#careers">Careers</a><a href="#about">About</a><a href="#contact">Contact</a></div></div><div className="container footerBottom"><span>© 2026 ROWBOAT CONSULTING SERVICES</span><span>Every Industry. Every Opportunity. One Platform.</span></div></footer>
