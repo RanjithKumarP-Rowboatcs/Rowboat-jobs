@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import RowboatLogo from '../../components/RowboatLogo'
 
 const industries = [
   ['Information Technology', 'Software, cloud, AI, data, cybersecurity, infrastructure and digital roles.'],
@@ -34,7 +35,7 @@ export default function Home() {
 
   return <>
     <nav className="nav"><div className="container navInner">
-      <a className="brand" href="#top" aria-label="ROWBOAT Consulting Services home"><img className="brandLogo" src="/rowboat-logo.svg" alt="ROWBOAT CONSULTING SERVICES"/></a>
+      <a className="brand" href="#top" aria-label="ROWBOAT Consulting Services home"><RowboatLogo className="brandLogo" /></a>
       <div className="navLinks">
         <a href="/opportunities">Opportunities</a><a href="#industries">Industries</a><a href="#employers">Employers</a><a href="#about">About</a><a className="navCta" href="#contact">Contact ↗</a>
       </div>
@@ -62,6 +63,6 @@ export default function Home() {
       <section className="contactSection" id="contact"><div className="container"><div className="contactIntro"><div><div className="eyebrow">Contact Rowboat</div><h2>Let's connect.</h2><p>Whether you are a job seeker, employer, business partner or organization, tell us what you need.</p></div><div className="contactDetails"><span>Enquiries</span><a href="mailto:ranjith@rowboatcs.com">ranjith@rowboatcs.com</a></div></div><form className="contactForm" onSubmit={handleContactSubmit}><label>Name<input name="name" required placeholder="Your name" autoComplete="name"/></label><label>Email<input name="email" type="email" required placeholder="you@company.com" autoComplete="email"/></label><label>I'm interested in<select name="interest"><option>Finding opportunities</option><option>Posting an IT hiring requirement</option><option>Posting a manufacturing hiring requirement</option><option>Business partnership</option><option>General enquiry</option></select></label><label>Message<textarea name="message" required rows={5} placeholder="Tell us what you need..."></textarea></label><div className="formActions"><button className="btn btnPrimary" type="submit">Send enquiry ↗</button><span className="formNote">Your enquiry is addressed to ranjith@rowboatcs.com.</span></div>{messageStatus && <p className="messageStatus" role="status">{messageStatus}</p>}</form></div></section>
     </main>
 
-    <footer className="footer"><div className="container footerTop"><div className="footerBrand"><img className="footerLogo" src="/rowboat-logo.svg" alt="ROWBOAT CONSULTING SERVICES"/></div><div className="footerLinks"><a href="/opportunities">Opportunities</a><a href="#industries">Industries</a><a href="#employers">Employers</a><a href="#careers">Careers</a><a href="#about">About</a><a href="#contact">Contact</a></div></div><div className="container footerBottom"><span>© 2026 ROWBOAT CONSULTING SERVICES</span><span>IT + Manufacturing · Every Opportunity.</span></div></footer>
+    <footer className="footer"><div className="container footerTop"><div className="footerBrand"><RowboatLogo className="footerLogo" /></div><div className="footerLinks"><a href="/opportunities">Opportunities</a><a href="#industries">Industries</a><a href="#employers">Employers</a><a href="#careers">Careers</a><a href="#about">About</a><a href="#contact">Contact</a></div></div><div className="container footerBottom"><span>© 2026 ROWBOAT CONSULTING SERVICES</span><span>IT + Manufacturing · Every Opportunity.</span></div></footer>
   </>
 }
