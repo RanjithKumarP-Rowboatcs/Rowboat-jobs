@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import RowboatLogo from '../../../components/RowboatLogo'
 import { createClient } from '../../lib/supabase/browser'
 
 type Role = 'candidate' | 'employer'
