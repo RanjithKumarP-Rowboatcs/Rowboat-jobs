@@ -26,6 +26,16 @@ alter table public.profiles add column if not exists employer_status text;
 alter table public.profiles add column if not exists created_at timestamptz default now();
 alter table public.profiles add column if not exists updated_at timestamptz default now();
 
+alter table public.profiles enable row level security;
+drop policy if exists "Users can read own profile" on public.profiles;
+create policy "Users can read own profile" on public.profiles for select to authenticated using (id = auth.uid());
+drop policy if exists "Users can update own profile" on public.profiles;
+create policy "Users can update own profile" on public.profiles for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+drop policy if exists "Admins can read profiles" on public.profiles;
+create policy "Admins can read profiles" on public.profiles for select to authenticated using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+drop policy if exists "Admins can update employer profiles" on public.profiles;
+create policy "Admins can update employer profiles" on public.profiles for update to authenticated using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin') with check ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
 update public.profiles set role='candidate' where role is null or role not in ('candidate','employer','admin');
 update public.profiles set employer_status='pending' where employer_status is null or employer_status not in ('pending','approved','rejected');
 
@@ -93,7 +103,7 @@ using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 drop policy if exists "Employer can read own jobs" on public.jobs;
 create policy "Employer can read own jobs"
 on public.jobs for select to authenticated
-using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'employer' and created_by = auth.uid());
+using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'employer' and p.employer_status = 'approved') and created_by = auth.uid());
 
 drop policy if exists "Employer can create approved jobs" on public.jobs;
 create policy "Employer can create approved jobs"
@@ -108,13 +118,13 @@ using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 drop policy if exists "Candidate can view own rowboat applications" on public.rowboat_applications;
 create policy "Candidate can view own rowboat applications"
 on public.rowboat_applications for select to authenticated
-using ((select auth.jwt() -> 'app_metadata' ->> 'role') = 'candidate' and candidate_id = auth.uid());
+using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'candidate') and candidate_id = auth.uid());
 
 drop policy if exists "Employer can view own job applications" on public.rowboat_applications;
 create policy "Employer can view own job applications"
 on public.rowboat_applications for select to authenticated
 using (
-  (select auth.jwt() -> 'app_metadata' ->> 'role') = 'employer'
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'employer' and p.employer_status = 'approved')
   and exists (
     select 1 from public.jobs j
     where j.id = rowboat_applications.job_id and j.created_by = auth.uid()
@@ -131,7 +141,7 @@ create policy "Candidates can upload own resumes"
 on storage.objects for insert to authenticated
 with check (
   bucket_id = 'candidate-resumes'
-  and (select auth.jwt() -> 'app_metadata' ->> 'role') = 'candidate'
+  and exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'candidate')
   and (storage.foldername(name))[1] = 'candidate-resumes'
   and (storage.foldername(name))[2] = auth.uid()::text
 );
