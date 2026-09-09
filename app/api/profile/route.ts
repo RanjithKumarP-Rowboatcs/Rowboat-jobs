@@ -15,6 +15,11 @@ export async function PATCH(request: NextRequest) {
   if (role === 'admin') return NextResponse.json({ error: 'Admin profile is managed separately.' }, { status: 403 })
 
   const input = await request.json()
+  const requestedEmail = String(input.email || '').trim().toLowerCase()
+  if (requestedEmail && requestedEmail !== String(user.email || '').toLowerCase()) {
+    const { error: emailError } = await supabase.auth.updateUser({ email: requestedEmail })
+    if (emailError) return NextResponse.json({ error: emailError.message }, { status: 400 })
+  }
   const patch = {
     full_name: String(input.full_name || '').trim() || null,
     phone: String(input.phone || '').trim() || null,
