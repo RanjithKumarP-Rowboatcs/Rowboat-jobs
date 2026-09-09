@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import RowboatLogo from '../../components/RowboatLogo'
+import RowboatLogo from '../components/RowboatLogo'
 
 const industries = [
   ['Information Technology', 'Software, cloud, AI, data, cybersecurity, infrastructure and digital roles.'],
