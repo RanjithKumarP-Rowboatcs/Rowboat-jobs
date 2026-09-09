@@ -4,6 +4,7 @@
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
+  email text,
   phone text,
   resume_url text,
   linkedin_url text,
@@ -16,6 +17,7 @@ create table if not exists public.profiles (
 );
 
 alter table public.profiles add column if not exists full_name text;
+alter table public.profiles add column if not exists email text;
 alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists resume_url text;
 alter table public.profiles add column if not exists linkedin_url text;
@@ -45,15 +47,17 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, full_name, company_name, role, employer_status)
+  insert into public.profiles (id, email, full_name, company_name, role, employer_status)
   values (
     new.id,
+    new.email,
     nullif(trim(new.raw_user_meta_data->>'full_name'), ''),
     nullif(trim(new.raw_user_meta_data->>'company_name'), ''),
     case when new.raw_user_meta_data->>'requested_role' = 'employer' then 'employer' else 'candidate' end,
     'pending'
   )
   on conflict (id) do update set
+    email = excluded.email,
     full_name = coalesce(excluded.full_name, public.profiles.full_name),
     company_name = coalesce(excluded.company_name, public.profiles.company_name);
   return new;
