@@ -65,3 +65,15 @@ section[id] {
     min-width: 0;
   }
 }
+
+
+/* Corrected horizontal Rowboat logo: preserve the supplied mark without distortion. */
+.rowboatLogo{display:flex;flex-direction:column;justify-content:center;width:100%;max-width:639px;height:auto;line-height:1;color:#253746}
+.rowboatLogoMain{display:flex;align-items:center;justify-content:center;white-space:nowrap;font-family:Georgia,'Times New Roman',serif;font-weight:900;font-size:clamp(28px,4.2vw,54px);letter-spacing:-1.8px}
+.rowboatLogoMain span{display:block}
+.rowboatLogoMark{display:block;width:clamp(38px,5vw,68px);height:clamp(38px,5vw,68px);object-fit:contain;margin:0 clamp(7px,1vw,13px);flex:0 0 auto}
+.rowboatLogoService{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:7px;font-family:Georgia,'Times New Roman',serif;font-size:clamp(13px,1.5vw,20px);font-weight:700;letter-spacing:clamp(3px,1vw,6px);color:#0f8195}
+.rowboatLogoService i{display:block;width:clamp(55px,11vw,155px);height:2px;background:#0f8195}
+.brandLogo{width:390px!important;max-width:390px!important;height:auto!important;max-height:none!important;object-fit:initial!important}
+.footerLogo{width:390px!important;max-width:390px!important;height:auto!important;max-height:none!important;object-fit:initial!important}
+@media(max-width:850px){.rowboatLogoMain{font-size:30px}.rowboatLogoMark{width:40px;height:40px;margin:0 7px}.rowboatLogoService{font-size:12px;letter-spacing:3px;gap:7px}.rowboatLogoService i{width:55px}.brandLogo,.footerLogo{width:285px!important;max-width:285px!important}.brand{width:290px!important;flex-basis:290px!important}}
