@@ -1,12 +1,13 @@
 type RowboatLogoProps = { className?: string }
 
 export default function RowboatLogo({ className = '' }: RowboatLogoProps) {
-  return <div className={`rowboatLogo ${className}`.trim()} aria-label="ROWBOAT CONSULTING SERVICES">
-    <div className="rowboatLogoMain">
-      <span>ROWBOAT</span>
-      <img className="rowboatLogoMark" src="/rowboat-mark.svg" alt="" aria-hidden="true" />
-      <span>CONSULTING</span>
+  return (
+    <div className={'rowboatLogo ' + className}>
+      <img
+        src="/rowboat-logo.svg"
+        alt="ROWBOAT CONSULTING SERVICES"
+        className="rowboatLogoImage"
+      />
     </div>
-    <div className="rowboatLogoService" aria-hidden="true"><i></i><span>SERVICES</span><i></i></div>
-  </div>
+  )
 }
