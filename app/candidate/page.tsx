@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
-import RowboatLogo from '../../../components/RowboatLogo'
+import RowboatLogo from '../../components/RowboatLogo'
 import { createClient } from '../../lib/supabase/browser'
 import ResumeUpload from '../../components/ResumeUpload'
 
