@@ -17,6 +17,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if (role === 'employer' && isApprovedEmployer(role, profile)) {
     const { data, error } = await supabase.from('rowboat_applications')
       .update({ status }).eq('id', id)
+      .in('job_id', (await supabase.from('jobs').select('id').eq('created_by', user.id)).data?.map((j:any)=>j.id) || ['00000000-0000-0000-0000-000000000000'])
       .select('*').single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ application: data })
