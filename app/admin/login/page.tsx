@@ -1,5 +1,6 @@
 'use client'
 import { FormEvent, useState } from 'react'
+import RowboatLogo from '../../components/RowboatLogo'
 import { createClient } from '../../../lib/supabase/browser'
 
 export default function AdminLogin(){
@@ -24,5 +25,5 @@ export default function AdminLogin(){
     }
   }
 
-  return <main className="adminShell"><div className="loginCard"><img src="/rowboat-logo.svg" alt="ROWBOAT CONSULTING SERVICES"/><div className="eyebrow">ROWBOAT ADMIN</div><h1>Sign in</h1><p>Use the Supabase Auth account created for your Rowboat administrator.</p><form className="adminForm" onSubmit={submit}><label>Email<input required type="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input required type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<div className="adminMessage">{error}</div>}<button className="adminButton" disabled={busy}>{busy?'Signing in…':'Sign in →'}</button></form><a className="backLink" href="/admin/reset-password">Forgot password?</a><br/><a className="backLink" href="/">← Back to website</a></div></main>
+  return <main className="adminShell"><div className="loginCard"><RowboatLogo /><div className="eyebrow">ROWBOAT ADMIN</div><h1>Sign in</h1><p>Use the Supabase Auth account created for your Rowboat administrator.</p><form className="adminForm" onSubmit={submit}><label>Email<input required type="email" value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input required type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<div className="adminMessage">{error}</div>}<button className="adminButton" disabled={busy}>{busy?'Signing in…':'Sign in →'}</button></form><a className="backLink" href="/admin/reset-password">Forgot password?</a><br/><a className="backLink" href="/">← Back to website</a></div></main>
 }
