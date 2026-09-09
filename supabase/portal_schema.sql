@@ -73,6 +73,7 @@ alter table public.jobs add column if not exists created_by uuid references auth
 alter table public.jobs add column if not exists approval_status text;
 update public.jobs set approval_status='approved' where approval_status is null;
 alter table public.jobs alter column approval_status set default 'approved';
+alter table public.jobs drop constraint if exists jobs_approval_status_check;
 alter table public.jobs add constraint jobs_approval_status_check check (approval_status in ('pending','approved','rejected')) not valid;
 
 alter table public.rowboat_applications add column if not exists candidate_id uuid references auth.users(id) on delete set null;
