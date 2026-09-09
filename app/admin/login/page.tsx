@@ -1,6 +1,6 @@
 'use client'
 import { FormEvent, useState } from 'react'
-import RowboatLogo from '../../components/RowboatLogo'
+import RowboatLogo from '../../../components/RowboatLogo'
 import { createClient } from '../../../lib/supabase/browser'
 
 export default function AdminLogin(){
