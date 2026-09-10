@@ -1,24 +1,22 @@
-/* Logo-only alignment fix: keep the complete ROWBOAT + globe + CONSULTING + SERVICES mark inside the header. */
+/* Keep the original ROWBOAT + globe + CONSULTING + SERVICES composition intact in the header. */
 .brandLogo,
 .footerLogo {
-  display: block;
-  width: 320px;
+  display: inline-flex;
+  width: 390px;
   max-width: 100%;
   height: auto;
-  max-height: 64px;
-  object-fit: contain;
-  object-position: center;
+  overflow: visible;
 }
 
 .brand {
-  width: 320px;
-  flex: 0 0 320px;
+  width: 390px;
+  flex: 0 0 390px;
   min-width: 0;
   overflow: visible;
 }
 
 .footerBrand {
-  min-width: 320px;
+  min-width: 390px;
   overflow: visible;
 }
 
@@ -37,47 +35,32 @@ section[id] {
 
 @media (max-width: 1050px) {
   .brand {
-    width: 300px;
-    flex-basis: 300px;
+    width: 350px;
+    flex-basis: 350px;
   }
 
   .brandLogo,
   .footerLogo {
-    width: 295px;
-    max-height: 59px;
+    width: 350px;
   }
 
   .footerBrand {
-    min-width: 295px;
+    min-width: 350px;
   }
 }
 
 @media (max-width: 850px) {
   .brand {
-    width: 265px;
-    flex-basis: 265px;
+    width: 310px;
+    flex-basis: 310px;
   }
 
   .brandLogo,
   .footerLogo {
-    width: 260px;
-    max-height: 52px;
+    width: 310px;
   }
 
   .footerBrand {
     min-width: 0;
   }
-}
-
-/* Keep any legacy RowboatLogo layout safe if referenced elsewhere. */
-.rowboatLogo {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  line-height: 1;
-}
-
-.rowboatLogoMark {
-  object-fit: contain;
 }
