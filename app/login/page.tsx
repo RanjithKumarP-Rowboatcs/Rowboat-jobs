@@ -1,10 +1,80 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
-import RowboatLogo from '../../components/RowboatLogo'
 import { createClient } from '../../lib/supabase/browser'
 
 type Role = 'candidate' | 'employer'
+
+function LoginLogo() {
+  return (
+    <span
+      aria-label="ROWBOAT CONSULTING SERVICES"
+      style={{
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '390px',
+        maxWidth: '100%',
+        lineHeight: 1,
+      }}
+    >
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          whiteSpace: 'nowrap',
+          color: '#253746',
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontWeight: 900,
+          fontSize: '30px',
+          letterSpacing: '0',
+        }}
+      >
+        <span>ROWBOAT</span>
+        <img
+          src="/rowboat-mark.svg"
+          alt=""
+          aria-hidden="true"
+          style={{
+            width: '48px',
+            height: '46px',
+            objectFit: 'contain',
+            margin: '0 6px',
+            flex: '0 0 auto',
+          }}
+        />
+        <span>CONSULTING</span>
+      </span>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          marginTop: '5px',
+        }}
+      >
+        <span style={{ width: '72px', height: '1px', background: '#168da0', flex: '0 0 72px' }} />
+        <span
+          style={{
+            margin: '0 10px',
+            color: '#168da0',
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            fontWeight: 700,
+            fontSize: '11px',
+            letterSpacing: '4px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          SERVICES
+        </span>
+        <span style={{ width: '72px', height: '1px', background: '#168da0', flex: '0 0 72px' }} />
+      </span>
+    </span>
+  )
+}
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -111,12 +181,8 @@ export default function LoginPage() {
   return (
     <main className="portalShell">
       <div className="portalCard">
-        <a href="/">
-          <img
-            className="portalLogo"
-            src="/rowboat-logo.svg"
-            alt="ROWBOAT CONSULTING SERVICES"
-          />
+        <a href="/" aria-label="Back to Rowboat Consulting Services home">
+          <LoginLogo />
         </a>
 
         <div className="eyebrow">ROWBOAT PORTAL</div>
