@@ -3,13 +3,13 @@
 <desc id="desc">ROWBOAT CONSULTING SERVICES company logo</desc>
 <rect width="560" height="120" fill="#fff"/>
 <g font-family="Georgia, 'Times New Roman', serif" font-weight="900" fill="#253746">
-  <text x="10" y="55" font-size="37" letter-spacing="0">ROWBOAT</text>
-  <text x="272" y="55" font-size="37" letter-spacing="0">CONSULTING</text>
+  <text x="12" y="53" font-size="31" letter-spacing="0">ROWBOAT</text>
+  <text x="294" y="53" font-size="31" letter-spacing="0">CONSULTING</text>
 </g>
-<image x="214" y="5" width="52" height="52" preserveAspectRatio="xMidYMid meet" href="/rowboat-mark.svg"/>
-<g stroke="#168da0" stroke-width="1.5">
-  <path d="M190 96H232"/>
-  <path d="M328 96H370"/>
+<image x="245" y="7" width="42" height="42" preserveAspectRatio="xMidYMid meet" href="/rowboat-mark.svg"/>
+<g stroke="#168da0" stroke-width="1.4">
+  <path d="M198 91H242"/>
+  <path d="M318 91H362"/>
 </g>
-<text x="280" y="105" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="15" letter-spacing="4.2" fill="#168da0">SERVICES</text>
+<text x="280" y="101" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="13" letter-spacing="3.8" fill="#168da0">SERVICES</text>
 </svg>
