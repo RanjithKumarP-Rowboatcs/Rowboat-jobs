@@ -1,24 +1,24 @@
-/* Final brand polish: use the supplied complete horizontal ROWBOAT CONSULTING SERVICES logo. */
+/* Logo-only alignment fix: keep the complete ROWBOAT + globe + CONSULTING + SERVICES mark inside the header. */
 .brandLogo,
 .footerLogo {
   display: block;
-  width: 365px;
+  width: 320px;
   max-width: 100%;
   height: auto;
-  max-height: 73px;
+  max-height: 64px;
   object-fit: contain;
-  object-position: left center;
+  object-position: center;
 }
 
 .brand {
-  width: 365px;
-  flex: 0 0 365px;
+  width: 320px;
+  flex: 0 0 320px;
   min-width: 0;
   overflow: visible;
 }
 
 .footerBrand {
-  min-width: 365px;
+  min-width: 320px;
   overflow: visible;
 }
 
@@ -37,31 +37,31 @@ section[id] {
 
 @media (max-width: 1050px) {
   .brand {
-    width: 320px;
-    flex-basis: 320px;
+    width: 300px;
+    flex-basis: 300px;
   }
 
   .brandLogo,
   .footerLogo {
-    width: 315px;
-    max-height: 63px;
+    width: 295px;
+    max-height: 59px;
   }
 
   .footerBrand {
-    min-width: 315px;
+    min-width: 295px;
   }
 }
 
 @media (max-width: 850px) {
   .brand {
-    width: 285px;
-    flex-basis: 285px;
+    width: 265px;
+    flex-basis: 265px;
   }
 
   .brandLogo,
   .footerLogo {
-    width: 275px;
-    max-height: 55px;
+    width: 260px;
+    max-height: 52px;
   }
 
   .footerBrand {
