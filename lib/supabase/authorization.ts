@@ -12,8 +12,19 @@ export async function getAuthContext(): Promise<AuthContext> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { supabase, user: null, role: null, profile: null }
 
+  // Support both app_metadata and the existing Rowboat roles table.
   const metadataRole = user.app_metadata?.role
-  if (metadataRole === 'admin') {
+  if (metadataRole === 'admin' || metadataRole === 'super_admin') {
+    return { supabase, user, role: 'admin', profile: null }
+  }
+
+  const { data: roleRow } = await supabase
+    .from('roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (roleRow?.role === 'admin' || roleRow?.role === 'super_admin') {
     return { supabase, user, role: 'admin', profile: null }
   }
 
