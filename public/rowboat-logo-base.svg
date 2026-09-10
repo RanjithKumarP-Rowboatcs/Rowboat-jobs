@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 708 141" role="img" aria-labelledby="title desc">
+<title id="title">ROWBOAT CONSULTING SERVICES</title>
+<desc id="desc">ROWBOAT CONSULTING SERVICES company logo</desc>
+<rect width="708" height="141" fill="#fff"/>
+<g font-family="Georgia, 'Times New Roman', serif" font-weight="900" fill="#253746">
+  <text x="38" y="82" font-size="47" letter-spacing="1">ROWBOAT</text>
+  <text x="342" y="82" font-size="47" letter-spacing="1">CONSULTING</text>
+</g>
+<path d="M66 113H220M488 113H642" stroke="#168da0" stroke-width="2"/>
+<text x="354" y="128" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="20" letter-spacing="6" fill="#168da0">SERVICES</text>
+</svg>
