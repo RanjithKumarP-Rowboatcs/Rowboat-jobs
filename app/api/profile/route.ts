@@ -3,6 +3,22 @@ import { getAuthContext } from '../../../lib/supabase/authorization'
 
 export const dynamic = 'force-dynamic'
 
+async function refreshTalentEmbedding(supabase: any, candidateId: string) {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData?.session?.access_token
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!token || !url) return
+    await fetch(`${url}/functions/v1/talent-embed`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate_id: candidateId }),
+    })
+  } catch {
+    // Embedding refresh is best-effort; profile saves must still succeed.
+  }
+}
+
 export async function GET() {
   const { supabase, user, role, profile } = await getAuthContext()
   if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
@@ -30,6 +46,9 @@ export async function PATCH(request: NextRequest) {
     linkedin_url: String(input.linkedin_url || '').trim() || null,
     company_name: String(input.company_name || '').trim() || null,
     company_website: String(input.company_website || '').trim() || null,
+    location: String(input.location || '').trim() || null,
+    experience_years: input.experience_years === undefined || input.experience_years === '' ? null : Number(input.experience_years),
+    notice_period_days: input.notice_period_days === undefined || input.notice_period_days === '' ? null : Number(input.notice_period_days),
   }
 
   const { data, error } = await supabase.from('profiles').update(patch).eq('id', user.id).select('*').single()
@@ -52,6 +71,7 @@ export async function PATCH(request: NextRequest) {
     const { data: talentData, error: talentError } = await supabase.from('talent_profiles').upsert({ candidate_id: user.id, ...talentPatch }).select('technology,primary_skill,secondary_skills,industry,previous_companies,employment_type,work_authorization,certifications,projects,availability').single()
     if (talentError) return NextResponse.json({ error: talentError.message }, { status: 500 })
     talent = talentData
+    await refreshTalentEmbedding(supabase, user.id)
   }
   return NextResponse.json({ profile: data, talent })
 }
