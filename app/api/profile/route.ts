@@ -4,9 +4,12 @@ import { getAuthContext } from '../../../lib/supabase/authorization'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const { user, role, profile } = await getAuthContext()
+  const { supabase, user, role, profile } = await getAuthContext()
   if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
-  return NextResponse.json({ user: { id: user.id, email: user.email }, role, profile })
+  const { data: talent } = role === 'candidate'
+    ? await supabase.from('talent_profiles').select('technology,primary_skill,secondary_skills,industry,previous_companies,employment_type,work_authorization,certifications,projects,availability').eq('candidate_id', user.id).maybeSingle()
+    : { data: null }
+  return NextResponse.json({ user: { id: user.id, email: user.email }, role, profile, talent })
 }
 
 export async function PATCH(request: NextRequest) {
@@ -31,5 +34,24 @@ export async function PATCH(request: NextRequest) {
 
   const { data, error } = await supabase.from('profiles').update(patch).eq('id', user.id).select('*').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ profile: data })
+
+  let talent = null
+  if (role === 'candidate') {
+    const talentPatch = {
+      technology: String(input.technology || '').trim() || null,
+      primary_skill: String(input.primary_skill || '').trim() || null,
+      secondary_skills: Array.isArray(input.secondary_skills) ? input.secondary_skills.map((v: any) => String(v).trim()).filter(Boolean) : String(input.secondary_skills || '').split(',').map(v => v.trim()).filter(Boolean),
+      industry: String(input.industry || '').trim() || null,
+      previous_companies: Array.isArray(input.previous_companies) ? input.previous_companies.map((v: any) => String(v).trim()).filter(Boolean) : String(input.previous_companies || '').split(',').map(v => v.trim()).filter(Boolean),
+      employment_type: String(input.employment_type || '').trim() || null,
+      work_authorization: String(input.work_authorization || '').trim() || null,
+      certifications: Array.isArray(input.certifications) ? input.certifications.map((v: any) => String(v).trim()).filter(Boolean) : String(input.certifications || '').split(',').map(v => v.trim()).filter(Boolean),
+      projects: Array.isArray(input.projects) ? input.projects.map((v: any) => String(v).trim()).filter(Boolean) : String(input.projects || '').split(',').map(v => v.trim()).filter(Boolean),
+      availability: String(input.availability || '').trim() || null,
+    }
+    const { data: talentData, error: talentError } = await supabase.from('talent_profiles').upsert({ candidate_id: user.id, ...talentPatch }).select('technology,primary_skill,secondary_skills,industry,previous_companies,employment_type,work_authorization,certifications,projects,availability').single()
+    if (talentError) return NextResponse.json({ error: talentError.message }, { status: 500 })
+    talent = talentData
+  }
+  return NextResponse.json({ profile: data, talent })
 }
