@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createClient } from '../lib/supabase/browser'
 
 type Candidate = { candidate_id: string; talent: any; profile: any; score?: number }
 
@@ -26,22 +27,25 @@ export default function TalentIntelligence() {
   useEffect(() => { load() }, [])
 
   async function findMatches() {
-    setBusy(true); setMessage('')
+    setBusy(true); setMessage(''); setMatches([])
     try {
+      const supabase = createClient()
+      const semantic = await supabase.functions.invoke('talent-search', { body: { query: requirement, threshold: 0.45, limit: 25 } })
+      if (!semantic.error && semantic.data?.matches?.length) {
+        setMatches(semantic.data.matches)
+        setMessage('AI semantic matching ranked candidates by profile meaning. Validate every result before contacting a candidate.')
+        return
+      }
+
       const response = await fetch('/api/talent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: requirement,
-          location,
-          skills,
-          experienceMin,
-          noticeDays,
-        }),
+        body: JSON.stringify({ text: requirement, location, skills, experienceMin, noticeDays }),
       })
       const body = await response.json()
-      if (!response.ok) throw new Error(body.error || 'Unable to calculate matches')
+      if (!response.ok) throw new Error(body.error || semantic.error?.message || 'Unable to calculate matches')
       setMatches(body.matches || [])
+      setMessage('Structured matching ranked the current talent pool. AI semantic results will appear as candidate profiles are indexed.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to calculate matches')
     } finally { setBusy(false) }
@@ -55,7 +59,7 @@ export default function TalentIntelligence() {
         <div>
           <div className="eyebrow">TALENT INTELLIGENCE</div>
           <h1>Search your talent pool.</h1>
-          <p>Store structured candidate intelligence, search resumes and rank candidates against new requirements. Recruiters validate every result.</p>
+          <p>Store structured candidate intelligence, secure resumes and rank candidates against new requirements. AI assists the recruiter; humans validate the results.</p>
         </div>
       </div>
 
