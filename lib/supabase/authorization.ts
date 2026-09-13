@@ -1,9 +1,11 @@
 import { createClient } from './server'
 
+export type AppRole = 'admin' | 'super_admin' | 'recruiter' | 'employer' | 'candidate'
+
 export type AuthContext = {
   supabase: Awaited<ReturnType<typeof createClient>>
   user: any
-  role: 'admin' | 'super_admin' | 'recruiter' | 'employer' | 'candidate' | null
+  role: AppRole | null
   profile: any
 }
 
@@ -12,7 +14,6 @@ export async function getAuthContext(): Promise<AuthContext> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { supabase, user: null, role: null, profile: null }
 
-  // Support app_metadata and the existing Rowboat roles table.
   const metadataRole = user.app_metadata?.role
   if (metadataRole === 'admin' || metadataRole === 'super_admin' || metadataRole === 'recruiter') {
     return { supabase, user, role: metadataRole, profile: null }
