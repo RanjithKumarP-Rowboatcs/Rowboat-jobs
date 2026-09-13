@@ -27,8 +27,6 @@ export type ParsedResume = {
   aiSummary: string
 }
 
-// Common technologies and enterprise tools. This list is intentionally broader than the
-// original parser so ordinary resumes do not lose useful skills simply because a term was missing.
 const SKILLS = [
   'SAP CPI','SAP BTP','SAP Basis','SAP Datasphere','SAP S/4HANA','SAP ECC','SAP HANA','SAP Integration Suite',
   'Python','Java','JavaScript','TypeScript','React','Next.js','Node.js','SQL','PostgreSQL','MySQL',
@@ -41,15 +39,10 @@ const SKILLS = [
   'Cloud Connector','Kernel Upgrade','SPS Upgrade','SPAM/SAINT','SUM','RFC','Java NWA','SLD','DB13','CUPS','SAP Router',
 ]
 
-const BAD_NAME_WORDS = /resume|curriculum|vitae|profile|summary|objective|contact|email|phone|linkedin|github|skills|experience|education|professional|technical|responsibilities|operations|management|consultant|system engineer|senior analyst/i
+const BAD_NAME_WORDS = /resume|curriculum|vitae|profile|summary|objective|contact|email|phone|linkedin|github|skills|experience|education|professional|technical|responsibilities|operations|management|consultant|engineer|developer|analyst|manager|architect/i
 
 function cleanText(text: string) {
-  return text
-    .replace(/\u0000/g, ' ')
-    .replace(/\r/g, '\n')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  return text.replace(/\u0000/g, ' ').replace(/\r/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
 }
 
 function linesOf(text: string) {
@@ -92,9 +85,14 @@ function looksLikeName(line: string) {
 
 function extractName(text: string) {
   const lines = linesOf(text).slice(0, 12)
-  // Most resumes put the person's name before the professional title.
-  const candidate = lines.find(looksLikeName)
-  return candidate?.replace(/[|,:;]+$/, '').trim()
+  for (const line of lines) {
+    if (looksLikeName(line)) return line.replace(/[|,:;]+$/, '').trim()
+    // Handles a common header such as "Darshita Oza SAP BASIS/HANA" where the name
+    // and professional title are on the same line.
+    const header = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z.'-]+){1,3})\s+(?=(?:SAP|S/4HANA|HANA|Software|Senior|Lead|Principal|Consultant|Engineer|Developer|Architect|Analyst|Manager|Data|IT)\b)/i)
+    if (header && !BAD_NAME_WORDS.test(header[1])) return header[1].trim()
+  }
+  return undefined
 }
 
 function extractSkills(text: string) {
@@ -108,7 +106,6 @@ function extractCompanies(text: string) {
   const experienceStart = lines.findIndex(line => /^professional experience$/i.test(line))
   const experienceLines = experienceStart >= 0 ? lines.slice(experienceStart + 1, experienceStart + 15) : lines
   for (const line of experienceLines) {
-    // Handles entries such as: T-systems ICT Pune (Oct 2024 – Current) – Consultant
     const match = line.match(/^(.+?)\s*\((?:[A-Za-z]{3,9}\s+)?\d{4}\s*[–-]\s*(?:[A-Za-z]{3,9}\s+)?(?:\d{4}|current)\)/i)
     if (match?.[1]) companies.push(match[1].trim())
   }
@@ -119,12 +116,12 @@ function extractCompanies(text: string) {
 
 function extractExperience(text: string) {
   const explicit = firstMatch(text, [
-    /(?:total\s+)?(?:years?|yrs?)\s+(?:of\s+)?(?:total\s+)?experience\s*[:\-]?\s*(\d+(?:\.\d+)?)/i,
-    /(\d+(?:\.\d+)?)\+?\s+years?\s+(?:of\s+)?experience/i,
+    /(?:total\s+)?(?:IT\s+)?experience\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?/i,
+    /(\d+(?:\.\d+)?)\s*\+?\s*years?\s+(?:of\s+)?(?:total\s+)?(?:IT\s+)?experience/i,
+    /(\d+(?:\.\d+)?)\s*years?\b[\s\S]{0,50}\bexperience\b/i,
   ])
   if (explicit) return Number(explicit)
 
-  // If no total is stated, estimate from employment dates only when they are clear.
   const ranges = [...text.matchAll(/\b(20\d{2})\s*[–-]\s*(20\d{2}|current)\b/gi)]
   if (!ranges.length) return undefined
   let earliest = Infinity
@@ -136,25 +133,15 @@ function extractExperience(text: string) {
 function extractNotice(text: string) {
   const lower = text.toLowerCase()
   if (/\b(immediate joiner|immediate joining|can join immediately|available immediately|immediate)\b/.test(lower)) return 0
-  const explicit = firstMatch(text, [
-    /(?:notice\s+period|notice)\s*[:\-]?\s*(\d+)\s*days?/i,
-    /(\d+)\s*days?\s*(?:notice|notice\s+period)/i,
-  ])
+  const explicit = firstMatch(text, [/(?:notice\s+period|notice)\s*[:\-]?\s*(\d+)\s*days?/i, /(\d+)\s*days?\s*(?:notice|notice\s+period)/i])
   return explicit ? Number(explicit) : undefined
 }
 
 function extractLocation(text: string) {
-  const labelled = firstMatch(text, [
-    /(?:current\s+location|location|based\s+in|residing\s+in)\s*[:\-]\s*([^\n]{2,100})/i,
-  ])
+  const labelled = firstMatch(text, [/(?:current\s+location|location|based\s+in|residing\s+in)\s*[:\-]\s*([^\n]{2,100})/i])
   if (labelled) return labelled.replace(/\b(?:linkedin|email|phone)\b.*$/i, '').trim()
-
-  // Contact header fallback: Darshita Oza ... Pune LinkedIn
   const header = linesOf(text).slice(0, 5).find(line => /linkedin/i.test(line) && /\b(?:Pune|Mumbai|Delhi|Bengaluru|Bangalore|Hyderabad|Chennai|Kolkata|Ahmedabad|Noida|Gurugram|Gurgaon|Nashik|Nagpur)\b/i.test(line))
-  if (header) {
-    const city = header.match(/\b(Pune|Mumbai|Delhi|Bengaluru|Bangalore|Hyderabad|Chennai|Kolkata|Ahmedabad|Noida|Gurugram|Gurgaon|Nashik|Nagpur)\b/i)
-    return city?.[1]
-  }
+  if (header) return header.match(/\b(Pune|Mumbai|Delhi|Bengaluru|Bangalore|Hyderabad|Chennai|Kolkata|Ahmedabad|Noida|Gurugram|Gurgaon|Nashik|Nagpur)\b/i)?.[1]
   return undefined
 }
 
@@ -175,35 +162,22 @@ function extractSection(text: string, headings: string[], maxChars: number) {
   const heading = headings.join('|')
   const match = text.match(new RegExp(`(?:^|\\n)\\s*(?:${heading})\\s*[:\\-]?\\s*([\\s\\S]{0,${maxChars}})`, 'imi'))
   if (!match?.[1]) return []
-  return match[1]
-    .split(/\n|•|●|➢|▪/)
-    .map(x => x.trim().replace(/^[*\-]+\s*/, ''))
-    .filter(x => x.length > 3 && x.length < 300 && !/^(skills|education|achievements?|professional experience|technical responsibilities|management responsibilities)$/i.test(x))
-    .slice(0, 20)
+  return match[1].split(/\n|•|●|➢|▪/).map(x => x.trim().replace(/^[*\-]+\s*/, '')).filter(x => x.length > 3 && x.length < 300 && !/^(skills|education|achievements?|professional experience|technical responsibilities|management responsibilities)$/i.test(x)).slice(0, 20)
 }
 
-function extractCertifications(text: string) {
-  return extractSection(text, ['certifications?', 'certificates?'], 1800)
-}
-
-function extractProjects(text: string) {
-  return extractSection(text, ['projects?', 'key projects?', 'project experience'], 2600)
-}
-
+function extractCertifications(text: string) { return extractSection(text, ['certifications?', 'certificates?'], 1800) }
+function extractProjects(text: string) { return extractSection(text, ['projects?', 'key projects?', 'project experience'], 2600) }
 function extractEducation(text: string) {
   const values = extractSection(text, ['education', 'academic background', 'qualifications?'], 1800)
   if (values.length) return values
-  const lines = linesOf(text)
-  const index = lines.findIndex(line => /^education$/i.test(line))
-  return index >= 0 ? lines.slice(index + 1, index + 5) : []
+  const lines = linesOf(text); const index = lines.findIndex(line => /^education$/i.test(line)); return index >= 0 ? lines.slice(index + 1, index + 5) : []
 }
 
 function extractMoney(text: string, labels: string[]) {
   const label = labels.join('|')
   const match = text.match(new RegExp(`(?:${label})\\s*[:\\-]?\\s*(?:INR|Rs\\.?|₹)?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(lpa|lakhs?|lakh|crore|cr)?`, 'i'))
   if (!match) return undefined
-  const value = Number(match[1])
-  if (!Number.isFinite(value)) return undefined
+  const value = Number(match[1]); if (!Number.isFinite(value)) return undefined
   const unit = (match[2] || '').toLowerCase()
   if (unit === 'lpa' || unit === 'lakh' || unit === 'lakhs') return value * 100000
   if (unit === 'cr' || unit === 'crore') return value * 10000000
@@ -226,76 +200,24 @@ function inferIndustry(text: string, skills: string[]) {
 }
 
 function makeSummary(name: string | undefined, years: number | undefined, skills: string[], company: string | undefined, location: string | undefined, certifications: string[]) {
-  const who = name || 'Candidate'
-  const exp = years != null ? `${years} years of experience` : 'professional experience'
-  const skillText = skills.slice(0, 10).join(', ') || 'relevant skills'
-  const companyText = company ? ` currently associated with ${company}` : ''
-  const locationText = location ? ` based in ${location}` : ''
-  const certText = certifications.length ? ` Certifications listed include ${certifications.slice(0, 3).join(', ')}.` : ''
+  const who = name || 'Candidate'; const exp = years != null ? `${years} years of experience` : 'professional experience'; const skillText = skills.slice(0, 10).join(', ') || 'relevant skills'; const companyText = company ? ` currently associated with ${company}` : ''; const locationText = location ? ` based in ${location}` : ''; const certText = certifications.length ? ` Certifications listed include ${certifications.slice(0, 3).join(', ')}.` : ''
   return `${who} has ${exp}${companyText}${locationText}. The submitted resume lists ${skillText}.${certText} This is a factual resume extraction and must be validated by a recruiter.`
 }
 
 export async function extractResumeText(buffer: Buffer, mimeType: string) {
-  if (mimeType === 'application/pdf') {
-    const parsed = await pdfParse(buffer)
-    return cleanText(parsed.text || '')
-  }
-  if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-    const parsed = await mammoth.extractRawText({ buffer })
-    return cleanText(parsed.value || '')
-  }
-  if (mimeType === 'application/msword') {
-    const extractor = new WordExtractor()
-    const document = await extractor.extract(buffer)
-    return cleanText(document.getBody() || '')
-  }
+  if (mimeType === 'application/pdf') { const parsed = await pdfParse(buffer); return cleanText(parsed.text || '') }
+  if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') { const parsed = await mammoth.extractRawText({ buffer }); return cleanText(parsed.value || '') }
+  if (mimeType === 'application/msword') { const extractor = new WordExtractor(); const document = await extractor.extract(buffer); return cleanText(document.getBody() || '') }
   throw new Error('Unsupported resume format. Please upload PDF, DOCX or DOC.')
 }
 
 export function analyzeResume(text: string): ParsedResume {
-  const skills = extractSkills(text)
-  const name = extractName(text)
-  const experienceYears = extractExperience(text)
-  const noticePeriodDays = extractNotice(text)
-  const location = extractLocation(text)
-  const currentCompany = extractCurrentCompany(text)
+  const skills = extractSkills(text); const name = extractName(text); const experienceYears = extractExperience(text); const noticePeriodDays = extractNotice(text); const location = extractLocation(text); const currentCompany = extractCurrentCompany(text)
   const previousCompanies = extractCompanies(text).filter(company => company.toLowerCase() !== currentCompany?.toLowerCase()).slice(0, 10)
   const industry = firstMatch(text, [/(?:industry|domain)\s*[:\-]?\s*([^\n]{2,80})/i]) || inferIndustry(text, skills)
   const employmentType = firstMatch(text, [/(?:employment type|job type|employment)\s*[:\-]?\s*([^\n]{2,60})/i])
   const workAuthorization = firstMatch(text, [/(?:work authorization|work permit|visa status|authorization)\s*[:\-]?\s*([^\n]{2,100})/i])
-  const technology = skills.slice(0, 12).join(', ') || undefined
-  const primarySkill = skills[0]
-  const certifications = extractCertifications(text)
-  const projects = extractProjects(text)
-  const education = extractEducation(text)
-  const email = extractEmail(text)
-  const phone = extractPhone(text)
-  const linkedinUrl = extractLinkedIn(text)
-  const currentCompensation = extractMoney(text, ['current ctc','current compensation','current salary','present ctc','present salary'])
-  const expectedCompensation = extractMoney(text, ['expected ctc','expected compensation','expected salary','desired salary'])
-
-  return {
-    text,
-    fullName: name,
-    email,
-    phone,
-    location,
-    currentCompany,
-    experienceYears,
-    noticePeriodDays,
-    technology,
-    primarySkill,
-    secondarySkills: skills.filter(skill => skill !== primarySkill).slice(0, 30),
-    industry,
-    previousCompanies,
-    certifications,
-    projects,
-    linkedinUrl,
-    currentCompensation,
-    expectedCompensation,
-    employmentType,
-    workAuthorization,
-    education,
-    aiSummary: makeSummary(name, experienceYears, skills, currentCompany, location, certifications),
-  }
+  const technology = skills.slice(0, 12).join(', '); const primarySkill = skills[0]; const certifications = extractCertifications(text); const projects = extractProjects(text); const education = extractEducation(text)
+  const email = extractEmail(text); const phone = extractPhone(text); const linkedinUrl = extractLinkedIn(text); const currentCompensation = extractMoney(text, ['current ctc','current compensation','current salary','present ctc','present salary']); const expectedCompensation = extractMoney(text, ['expected ctc','expected compensation','expected salary','desired salary'])
+  return { text, fullName: name, email, phone, location, currentCompany, experienceYears, noticePeriodDays, technology: technology || undefined, primarySkill, secondarySkills: skills.filter(skill => skill !== primarySkill).slice(0, 30), industry, previousCompanies, certifications, projects, linkedinUrl, currentCompensation, expectedCompensation, employmentType, workAuthorization, education, aiSummary: makeSummary(name, experienceYears, skills, currentCompany, location, certifications) }
 }
