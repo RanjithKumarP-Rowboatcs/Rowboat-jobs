@@ -34,7 +34,9 @@ async function enrichCandidate(supabase: any, userId: string, file: File) {
       ai_summary: parsed.aiSummary,
       ai_extracted_skills: parsed.secondarySkills.concat(parsed.primarySkill ? [parsed.primarySkill] : []),
       ai_certifications: parsed.certifications,
-      ai_confidence: 0.78,
+      // No generative model confidence is claimed here. The summary is a factual
+      // template generated from extracted resume fields until an LLM is configured.
+      ai_confidence: null,
       technology: parsed.technology || existing?.technology || null,
       primary_skill: parsed.primarySkill || existing?.primary_skill || null,
       secondary_skills: parsed.secondarySkills.length ? parsed.secondarySkills : (existing?.secondary_skills || []),
@@ -59,15 +61,10 @@ async function enrichCandidate(supabase: any, userId: string, file: File) {
     }
 
     // Semantic embedding is generated with Supabase's built-in AI inference.
-    await supabase.functions.invoke('talent-embed', { body: { candidate_id: userId } })
+    const { error: embeddingError } = await supabase.functions.invoke('talent-embed', { body: { candidate_id: userId } })
+    if (embeddingError) throw embeddingError
 
-    // Try the generative AI enrichment function. Parsing and upload remain successful if the hosted LLM is unavailable.
-    const { data: aiData } = await supabase.functions.invoke('talent-ai-summary', { body: { candidate_id: userId, text: parsed.text.slice(0, 30000) } })
-    if (aiData?.summary) {
-      await supabase.from('talent_profiles').update({ ai_summary: aiData.summary, ai_confidence: aiData.confidence ?? 0.9 }).eq('candidate_id', userId)
-    }
-
-    return { parse_status: 'completed', parsed, ai_summary: aiData?.summary || parsed.aiSummary }
+    return { parse_status: 'completed', parsed, ai_summary: parsed.aiSummary }
   } catch (error) {
     await supabase.from('talent_profiles').upsert({
       candidate_id: userId,
