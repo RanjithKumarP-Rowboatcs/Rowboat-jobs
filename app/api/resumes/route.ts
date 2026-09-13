@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const BUCKET = 'candidate-resumes'
-const PREFIX = 'storage:candidate-resumes/'
 const MAX_SIZE = 10 * 1024 * 1024
 const ALLOWED = new Set([
   'application/pdf',
@@ -27,51 +26,29 @@ async function enrichCandidate(supabase: any, userId: string, file: File) {
     const { data: existing } = await supabase.from('talent_profiles').select('*').eq('candidate_id', userId).maybeSingle()
     const payload = {
       candidate_id: userId,
-      resume_text: parsed.text.slice(0, 50000),
-      parsed_at: new Date().toISOString(),
-      parse_status: 'completed',
-      parse_error: null,
-      ai_summary: parsed.aiSummary,
-      ai_extracted_skills: parsed.secondarySkills.concat(parsed.primarySkill ? [parsed.primarySkill] : []),
-      ai_certifications: parsed.certifications,
-      // No generative model confidence is claimed here. The summary is a factual
-      // template generated from extracted resume fields until an LLM is configured.
-      ai_confidence: null,
-      technology: parsed.technology || existing?.technology || null,
-      primary_skill: parsed.primarySkill || existing?.primary_skill || null,
-      secondary_skills: parsed.secondarySkills.length ? parsed.secondarySkills : (existing?.secondary_skills || []),
-      industry: parsed.industry || existing?.industry || null,
-      previous_companies: parsed.previousCompanies.length ? parsed.previousCompanies : (existing?.previous_companies || []),
-      certifications: parsed.certifications.length ? parsed.certifications : (existing?.certifications || []),
-      projects: parsed.projects.length ? parsed.projects : (existing?.projects || []),
-      availability: existing?.availability || null,
+      resume_text: parsed.text.slice(0, 50000), parsed_at: new Date().toISOString(), parse_status: 'completed', parse_error: null,
+      ai_summary: parsed.aiSummary, ai_extracted_skills: parsed.secondarySkills.concat(parsed.primarySkill ? [parsed.primarySkill] : []), ai_certifications: parsed.certifications, ai_confidence: null,
+      technology: parsed.technology || existing?.technology || null, primary_skill: parsed.primarySkill || existing?.primary_skill || null,
+      secondary_skills: parsed.secondarySkills.length ? parsed.secondarySkills : (existing?.secondary_skills || []), industry: parsed.industry || existing?.industry || null,
+      previous_companies: parsed.previousCompanies.length ? parsed.previousCompanies : (existing?.previous_companies || []), certifications: parsed.certifications.length ? parsed.certifications : (existing?.certifications || []),
+      projects: parsed.projects.length ? parsed.projects : (existing?.projects || []), availability: existing?.availability || null,
     }
-
     const { error } = await supabase.from('talent_profiles').upsert(payload).select('*').single()
     if (error) throw error
 
     if (parsed.fullName || parsed.location || parsed.currentCompany || parsed.experienceYears != null || parsed.noticePeriodDays != null) {
       await supabase.from('profiles').update({
-        ...(parsed.fullName ? { full_name: parsed.fullName } : {}),
-        ...(parsed.location ? { location: parsed.location } : {}),
-        ...(parsed.currentCompany ? { current_company: parsed.currentCompany } : {}),
-        ...(parsed.experienceYears != null ? { experience_years: parsed.experienceYears } : {}),
+        ...(parsed.fullName ? { full_name: parsed.fullName } : {}), ...(parsed.location ? { location: parsed.location } : {}),
+        ...(parsed.currentCompany ? { current_company: parsed.currentCompany } : {}), ...(parsed.experienceYears != null ? { experience_years: parsed.experienceYears } : {}),
         ...(parsed.noticePeriodDays != null ? { notice_period_days: parsed.noticePeriodDays, immediate_joiner: parsed.noticePeriodDays === 0 } : {}),
       }).eq('id', userId)
     }
 
-    // Semantic embedding is generated with Supabase's built-in AI inference.
     const { error: embeddingError } = await supabase.functions.invoke('talent-embed', { body: { candidate_id: userId } })
     if (embeddingError) throw embeddingError
-
     return { parse_status: 'completed', parsed, ai_summary: parsed.aiSummary }
   } catch (error) {
-    await supabase.from('talent_profiles').upsert({
-      candidate_id: userId,
-      parse_status: 'failed',
-      parse_error: error instanceof Error ? error.message : 'Resume parsing failed',
-      parsed_at: new Date().toISOString(),
-    })
+    await supabase.from('talent_profiles').upsert({ candidate_id: userId, parse_status: 'failed', parse_error: error instanceof Error ? error.message : 'Resume parsing failed', parsed_at: new Date().toISOString() })
     return { parse_status: 'failed', error: error instanceof Error ? error.message : 'Resume parsing failed' }
   }
 }
@@ -81,24 +58,19 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
   if (role !== 'candidate') return NextResponse.json({ error: 'Only candidates can upload resumes.' }, { status: 403 })
 
-  const form = await request.formData()
-  const entry = form.get('file')
+  const form = await request.formData(); const entry = form.get('file')
   if (!(entry instanceof File)) return NextResponse.json({ error: 'Choose a resume file first.' }, { status: 400 })
   if (!ALLOWED.has(entry.type)) return NextResponse.json({ error: 'Only PDF, DOC and DOCX resumes are supported.' }, { status: 400 })
   if (entry.size > MAX_SIZE) return NextResponse.json({ error: 'The resume must be 10 MB or smaller.' }, { status: 400 })
 
   const unique = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
   const path = `candidate-resumes/${user.id}/${unique}-${safeFileName(entry.name)}`
-
   const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, entry, { contentType: entry.type, upsert: false })
   if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
   const resumeUrl = `storage:${path}`
   const { data: profile, error: profileError } = await supabase.from('profiles').update({ resume_url: resumeUrl }).eq('id', user.id).select('*').single()
-  if (profileError) {
-    await supabase.storage.from(BUCKET).remove([path])
-    return NextResponse.json({ error: profileError.message }, { status: 500 })
-  }
+  if (profileError) { await supabase.storage.from(BUCKET).remove([path]); return NextResponse.json({ error: profileError.message }, { status: 500 }) }
 
   const enrichment = await enrichCandidate(supabase, user.id, entry)
   return NextResponse.json({ resume_url: resumeUrl, file_name: entry.name, profile, enrichment })
@@ -106,17 +78,26 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const rawPath = request.nextUrl.searchParams.get('path') || ''
-  if (!rawPath.startsWith(PREFIX)) return NextResponse.json({ error: 'Invalid resume path' }, { status: 400 })
-  const path = rawPath.slice('storage:'.length)
   const { supabase, user, role } = await getAuthContext()
   if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
+
+  let path = ''
+  if (rawPath.startsWith('storage:candidate-resumes/')) {
+    path = rawPath.slice('storage:'.length)
+  } else if (rawPath.startsWith('storage:talent-pool/')) {
+    if (!['admin', 'super_admin', 'recruiter'].includes(role as string)) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    path = rawPath.slice('storage:'.length)
+  } else {
+    return NextResponse.json({ error: 'Invalid resume path' }, { status: 400 })
+  }
 
   if (role === 'candidate' && !path.startsWith(`candidate-resumes/${user.id}/`)) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   if (role === 'employer') {
     const { data: application } = await supabase.from('rowboat_applications').select('id,job_id,resume_url,jobs!inner(created_by)').eq('resume_url', rawPath).eq('jobs.created_by', user.id).maybeSingle()
     if (!application) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   }
-  if (!['admin', 'candidate', 'employer'].includes(role)) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+  if (!['admin', 'super_admin', 'recruiter', 'candidate', 'employer'].includes(role as string)) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 10)
   if (error || !data?.signedUrl) return NextResponse.json({ error: error?.message || 'Unable to open resume' }, { status: 404 })
   return NextResponse.redirect(data.signedUrl, { status: 302 })
