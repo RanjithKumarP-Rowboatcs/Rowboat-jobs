@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthContext } from '../../../lib/supabase/authorization'
+import { analyzeResume, extractResumeText } from '../../../lib/talent/resume-parser'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 const BUCKET = 'candidate-resumes'
 const PREFIX = 'storage:candidate-resumes/'
@@ -13,9 +15,68 @@ const ALLOWED = new Set([
 ])
 
 function safeFileName(name: string) {
-  return (
-    name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'resume'
-  )
+  return name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'resume'
+}
+
+async function enrichCandidate(supabase: any, userId: string, file: File) {
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const text = await extractResumeText(buffer, file.type)
+    const parsed = analyzeResume(text)
+
+    const { data: existing } = await supabase.from('talent_profiles').select('*').eq('candidate_id', userId).maybeSingle()
+    const payload = {
+      candidate_id: userId,
+      resume_text: parsed.text.slice(0, 50000),
+      parsed_at: new Date().toISOString(),
+      parse_status: 'completed',
+      parse_error: null,
+      ai_summary: parsed.aiSummary,
+      ai_extracted_skills: parsed.secondarySkills.concat(parsed.primarySkill ? [parsed.primarySkill] : []),
+      ai_certifications: parsed.certifications,
+      ai_confidence: 0.78,
+      technology: parsed.technology || existing?.technology || null,
+      primary_skill: parsed.primarySkill || existing?.primary_skill || null,
+      secondary_skills: parsed.secondarySkills.length ? parsed.secondarySkills : (existing?.secondary_skills || []),
+      industry: parsed.industry || existing?.industry || null,
+      previous_companies: parsed.previousCompanies.length ? parsed.previousCompanies : (existing?.previous_companies || []),
+      certifications: parsed.certifications.length ? parsed.certifications : (existing?.certifications || []),
+      projects: parsed.projects.length ? parsed.projects : (existing?.projects || []),
+      availability: existing?.availability || null,
+    }
+
+    const { error } = await supabase.from('talent_profiles').upsert(payload).select('*').single()
+    if (error) throw error
+
+    if (parsed.fullName || parsed.location || parsed.currentCompany || parsed.experienceYears != null || parsed.noticePeriodDays != null) {
+      await supabase.from('profiles').update({
+        ...(parsed.fullName ? { full_name: parsed.fullName } : {}),
+        ...(parsed.location ? { location: parsed.location } : {}),
+        ...(parsed.currentCompany ? { current_company: parsed.currentCompany } : {}),
+        ...(parsed.experienceYears != null ? { experience_years: parsed.experienceYears } : {}),
+        ...(parsed.noticePeriodDays != null ? { notice_period_days: parsed.noticePeriodDays, immediate_joiner: parsed.noticePeriodDays === 0 } : {}),
+      }).eq('id', userId)
+    }
+
+    // Semantic embedding is generated with Supabase's built-in AI inference.
+    await supabase.functions.invoke('talent-embed', { body: { candidate_id: userId } })
+
+    // Try the generative AI enrichment function. Parsing and upload remain successful if the hosted LLM is unavailable.
+    const { data: aiData } = await supabase.functions.invoke('talent-ai-summary', { body: { candidate_id: userId, text: parsed.text.slice(0, 30000) } })
+    if (aiData?.summary) {
+      await supabase.from('talent_profiles').update({ ai_summary: aiData.summary, ai_confidence: aiData.confidence ?? 0.9 }).eq('candidate_id', userId)
+    }
+
+    return { parse_status: 'completed', parsed, ai_summary: aiData?.summary || parsed.aiSummary }
+  } catch (error) {
+    await supabase.from('talent_profiles').upsert({
+      candidate_id: userId,
+      parse_status: 'failed',
+      parse_error: error instanceof Error ? error.message : 'Resume parsing failed',
+      parsed_at: new Date().toISOString(),
+    })
+    return { parse_status: 'failed', error: error instanceof Error ? error.message : 'Resume parsing failed' }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -42,7 +103,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: profileError.message }, { status: 500 })
   }
 
-  return NextResponse.json({ resume_url: resumeUrl, file_name: entry.name, profile })
+  const enrichment = await enrichCandidate(supabase, user.id, entry)
+  return NextResponse.json({ resume_url: resumeUrl, file_name: entry.name, profile, enrichment })
 }
 
 export async function GET(request: NextRequest) {
@@ -53,14 +115,10 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
 
   if (role === 'candidate' && !path.startsWith(`candidate-resumes/${user.id}/`)) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
-
   if (role === 'employer') {
-    const { data: application } = await supabase.from('rowboat_applications')
-      .select('id,job_id,resume_url,jobs!inner(created_by)')
-      .eq('resume_url', rawPath).eq('jobs.created_by', user.id).maybeSingle()
+    const { data: application } = await supabase.from('rowboat_applications').select('id,job_id,resume_url,jobs!inner(created_by)').eq('resume_url', rawPath).eq('jobs.created_by', user.id).maybeSingle()
     if (!application) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   }
-
   if (!['admin', 'candidate', 'employer'].includes(role)) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 10)
   if (error || !data?.signedUrl) return NextResponse.json({ error: error?.message || 'Unable to open resume' }, { status: 404 })
