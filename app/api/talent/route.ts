@@ -4,11 +4,22 @@ import { getAuthContext } from '../../../lib/supabase/authorization'
 export const dynamic = 'force-dynamic'
 
 function staffOnly(role: string | null) {
-  return role === 'admin'
+  return role === 'admin' || role === 'super_admin' || role === 'recruiter'
 }
 
 function asText(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
+}
+
+function asArray(value: unknown) {
+  if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean)
+  return asText(value).split(',').map(v => v.trim()).filter(Boolean)
+}
+
+function asNumber(value: unknown) {
+  if (value === '' || value == null) return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
 }
 
 function candidateScore(candidate: any, requirement: { text?: string; location?: string; skills?: string[]; experienceMin?: number; noticeDays?: number }) {
@@ -24,23 +35,58 @@ function candidateScore(candidate: any, requirement: { text?: string; location?:
     ...(candidate.talent?.projects || []),
     candidate.talent?.industry,
   ].filter(Boolean).join(' ').toLowerCase()
-
   const requestedSkills = (requirement.skills || []).map(s => s.toLowerCase()).filter(Boolean)
   const matchedSkills = requestedSkills.filter(s => haystack.includes(s))
   let score = 45
   if (requestedSkills.length) score += Math.min(30, (matchedSkills.length / requestedSkills.length) * 30)
-
   const location = asText(candidate.profile?.location).toLowerCase()
   const wantedLocation = asText(requirement.location).toLowerCase()
   if (wantedLocation && location.includes(wantedLocation)) score += 15
-
   const experience = Number(candidate.profile?.experience_years || 0)
   if (requirement.experienceMin && experience >= requirement.experienceMin) score += 7
-
   const notice = Number(candidate.profile?.notice_period_days)
   if (requirement.noticeDays != null && Number.isFinite(notice) && notice <= requirement.noticeDays) score += 3
-
   return Math.max(0, Math.min(99, Math.round(score)))
+}
+
+async function getPoolCandidates(supabase: any) {
+  const { data, error } = await supabase.from('talent_pool_candidates').select('*').order('updated_at', { ascending: false }).limit(500)
+  if (error) return { candidates: [], error }
+  const candidates = (data || []).map((c: any) => ({
+    candidate_id: c.id,
+    talent: {
+      technology: c.technology,
+      primary_skill: c.primary_skill,
+      secondary_skills: c.secondary_skills || [],
+      industry: c.industry,
+      previous_companies: c.previous_companies || [],
+      employment_type: c.employment_type,
+      work_authorization: c.work_authorization,
+      certifications: c.certifications || [],
+      projects: c.projects || [],
+      availability: c.availability,
+      ai_generated_skill_profile: c.ai_summary,
+      candidate_status: c.candidate_status,
+      source: c.source,
+      recruiter: c.recruiter,
+      recruiter_notes: c.recruiter_notes,
+    },
+    profile: {
+      id: c.id,
+      full_name: c.full_name,
+      email: c.email,
+      phone: c.phone,
+      location: c.location,
+      current_company: c.current_company,
+      experience_years: c.years_experience,
+      notice_period_days: c.notice_period_days,
+      resume_url: c.resume_storage_path ? `storage:${c.resume_storage_path}` : null,
+      linkedin_url: c.linkedin_url,
+      current_ctc: c.current_compensation,
+      expected_ctc: c.expected_compensation,
+    },
+  }))
+  return { candidates, error: null }
 }
 
 export async function GET(request: NextRequest) {
@@ -49,25 +95,66 @@ export async function GET(request: NextRequest) {
   if (!staffOnly(role)) return NextResponse.json({ error: 'Recruiter/admin access required' }, { status: 403 })
 
   const search = request.nextUrl.searchParams.get('search')?.trim().toLowerCase() || ''
-  const { data: talent, error } = await supabase
-    .from('talent_profiles')
-    .select('*')
-    .order('updated_at', { ascending: false })
-    .limit(500)
-
+  const { data: talent, error } = await supabase.from('talent_profiles').select('*').order('updated_at', { ascending: false }).limit(500)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   const ids = (talent || []).map((row: any) => row.candidate_id)
   const { data: profiles, error: profileError } = ids.length
     ? await supabase.from('profiles').select('id,full_name,email,phone,headline,location,current_company,experience_years,notice_period_days,available_from,immediate_joiner,current_ctc,expected_ctc,resume_url').in('id', ids)
     : { data: [], error: null }
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 })
-
   const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
-  let candidates = (talent || []).map((t: any) => ({ talent: t, profile: profileMap.get(t.candidate_id) || null }))
-  if (search) {
-    candidates = candidates.filter((c: any) => JSON.stringify(c).toLowerCase().includes(search))
-  }
+  let candidates = (talent || []).map((t: any) => ({ candidate_id: t.candidate_id, talent: t, profile: profileMap.get(t.candidate_id) || null }))
+
+  const pool = await getPoolCandidates(supabase)
+  if (pool.error) return NextResponse.json({ error: pool.error.message }, { status: 500 })
+  candidates = [...candidates, ...(pool.candidates as CandidateLike[]) ]
+
+  if (search) candidates = candidates.filter((c: any) => JSON.stringify(c).toLowerCase().includes(search))
   return NextResponse.json({ candidates, total: candidates.length })
+}
+
+type CandidateLike = { candidate_id: string; talent: any; profile: any; score?: number }
+
+export async function PUT(request: NextRequest) {
+  const { supabase, user, role } = await getAuthContext()
+  if (!user) return NextResponse.json({ error: 'Sign in required' }, { status: 401 })
+  if (!staffOnly(role)) return NextResponse.json({ error: 'Recruiter/admin access required' }, { status: 403 })
+  const body = await request.json()
+  const fullName = asText(body.full_name)
+  if (!fullName) return NextResponse.json({ error: 'Full name is required' }, { status: 400 })
+
+  const payload = {
+    full_name: fullName,
+    email: asText(body.email) || null,
+    phone: asText(body.phone) || null,
+    location: asText(body.location) || null,
+    technology: asText(body.technology) || null,
+    primary_skill: asText(body.primary_skill) || null,
+    secondary_skills: asArray(body.secondary_skills),
+    years_experience: asNumber(body.years_experience),
+    industry: asText(body.industry) || null,
+    current_company: asText(body.current_company) || null,
+    previous_companies: asArray(body.previous_companies),
+    notice_period_days: asNumber(body.notice_period_days),
+    availability: asText(body.availability) || null,
+    current_compensation: asNumber(body.current_compensation),
+    expected_compensation: asNumber(body.expected_compensation),
+    employment_type: asText(body.employment_type) || null,
+    work_authorization: asText(body.work_authorization) || null,
+    certifications: asArray(body.certifications),
+    projects: asArray(body.projects),
+    linkedin_url: asText(body.linkedin_url) || null,
+    resume_storage_path: asText(body.resume_storage_path) || null,
+    resume_file_name: asText(body.resume_file_name) || null,
+    candidate_status: asText(body.candidate_status) || 'active',
+    source: asText(body.source) || null,
+    recruiter: asText(body.recruiter) || null,
+    recruiter_notes: asText(body.recruiter_notes) || null,
+    parse_status: 'not_uploaded',
+  }
+  const { data, error } = await supabase.from('talent_pool_candidates').insert(payload).select('*').single()
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ candidate: data }, { status: 201 })
 }
 
 export async function PATCH(request: NextRequest) {
