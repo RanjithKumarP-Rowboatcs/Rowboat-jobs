@@ -1,0 +1,80 @@
+name: Fix talent intelligence
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch talent search and database source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          component = Path('components/TalentIntelligence.tsx')
+          text = component.read_text()
+
+          start = text.index('  async function findMatches() {')
+          end = text.index('\n\n  const list =', start)
+          replacement = '''  async function findMatches() {
+    setBusy(true); setMessage(''); setMatches([])
+    try {
+      const supabase = createClient()
+      const wantedSkills = skills.split(',').map(v => v.trim()).filter(Boolean)
+      const semantic = await supabase.functions.invoke('talent-search', {
+        body: {
+          query: requirement,
+          location: location.trim(),
+          skills: wantedSkills,
+          experienceMin: experienceMin === '' ? undefined : Number(experienceMin),
+          noticeDays: noticeDays === '' ? undefined : Number(noticeDays),
+          limit: 50,
+        },
+      })
+      if (semantic.error) throw new Error(semantic.error.message || 'Unable to search candidates')
+      const exactMatches = Array.isArray(semantic.data?.matches) ? semantic.data.matches : []
+      setMatches(exactMatches)
+      setMessage(exactMatches.length
+        ? `${exactMatches.length} exact matching candidate${exactMatches.length === 1 ? '' : 's'} found. All entered criteria were applied.`
+        : 'No candidates match all of the entered criteria.')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to search candidates')
+    } finally { setBusy(false) }
+  }'''
+          component.write_text(text[:start] + replacement + text[end:])
+
+          # After a requirement search, never fall back to the full database list.
+          text = component.read_text()
+          text = text.replace("  const list = matches.length ? matches : candidates\n", "  const list = matches\n")
+          component.write_text(text)
+
+          route = Path('app/api/talent/route.ts')
+          text = route.read_text()
+          old_get = "const search=request.nextUrl.searchParams.get('search')?.trim().toLowerCase()||'';const {data:talent,error}=await supabase.from('talent_profiles').select('*').order('updated_at',{ascending:false}).limit(500);if(error)return NextResponse.json({error:error.message},{status:500});const ids=(talent||[]).map((row:any)=>row.candidate_id);const {data:profiles,error:profileError}=ids.length?await supabase.from('profiles').select('id,full_name,email,phone,headline,location,current_company,experience_years,notice_period_days,available_from,immediate_joiner,current_ctc,expected_ctc,resume_url').in('id',ids):{data:[],error:null};if(profileError)return NextResponse.json({error:profileError.message},{status:500});const profileMap=new Map((profiles||[]).map((p:any)=>[p.id,p]));let candidates=(talent||[]).map((t:any)=>({candidate_id:t.candidate_id,talent:t,profile:profileMap.get(t.candidate_id)||null}));const pool=await getPoolCandidates(supabase);if(pool.error)return NextResponse.json({error:pool.error.message},{status:500});candidates=[...candidates,...pool.candidates];if(search)candidates=candidates.filter((c:any)=>JSON.stringify(c).toLowerCase().includes(search));return NextResponse.json({candidates,total:candidates.length})"
+          new_get = "const search=request.nextUrl.searchParams.get('search')?.trim().toLowerCase()||'';const pool=await getPoolCandidates(supabase);if(pool.error)return NextResponse.json({error:pool.error.message},{status:500});let candidates=pool.candidates;if(search)candidates=candidates.filter((c:any)=>JSON.stringify(c).toLowerCase().includes(search));return NextResponse.json({candidates,total:candidates.length})"
+          if old_get in text:
+              route.write_text(text.replace(old_get, new_get))
+          else:
+              print('Legacy GET source not found; leaving route unchanged')
+          PY
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/TalentIntelligence.tsx app/api/talent/route.ts
+          if git diff --cached --quiet; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git commit -m "Use exact talent pool criteria for requirement search"
+          git push
