@@ -19,8 +19,8 @@ function monthYear(value: string | undefined, current = false) {
   const yearMatch = clean.match(/(19|20)\d{2}/)
   if (!yearMatch) return undefined
   const year = Number(yearMatch[0])
-  const monthWord = clean.replace(yearMatch[0], '').trim().replace(/[^a-z]/g, '')
-  const month = MONTHS[monthWord] || Number(monthWord) || undefined
+  const rest = clean.replace(yearMatch[0], '').trim().replace(/[^a-z0-9]/g, '')
+  const month = MONTHS[rest] || Number(rest) || undefined
   return { year, month }
 }
 
@@ -30,11 +30,10 @@ function toIndex(value: { year: number; month?: number }) {
 
 function experienceSection(text: string) {
   const lines = text.split(/\n+/).map(v => v.trim()).filter(Boolean)
-  const heading = /^(professional\s+experience|work\s+experience|employment\s+history|career\s+history|experience|employment|work\s+history)$/i
-  const stop = /^(education|academic\s+background|qualifications|skills|technical\s+skills|certifications?|projects?|achievements?|awards?|summary|professional\s+summary|objective)$/i
-  const start = lines.findIndex(line => heading.test(line.replace(/[:\-]+$/, '').trim()))
+  const start = lines.findIndex(line => /^(professional\s+experience|work\s+experience|employment\s+history|career\s+history|experience|employment|work\s+history)$/i.test(line.replace(/[:\-]+$/, '').trim()))
   if (start < 0) return lines.join('\n')
   const result: string[] = []
+  const stop = /^(education|academic\s+background|qualifications|skills|technical\s+skills|certifications?|projects?|achievements?|awards?|summary|professional\s+summary|objective)$/i
   for (let i = start + 1; i < lines.length; i++) {
     if (stop.test(lines[i].replace(/[:\-]+$/, '').trim())) break
     result.push(lines[i])
@@ -43,17 +42,17 @@ function experienceSection(text: string) {
 }
 
 function explicitTotal(text: string) {
-  const section = text.split(/\n+/).slice(0, 80).join('\n')
+  const top = text.split(/\n+/).slice(0, 100).join('\n')
   const patterns = [
-    /\b(\d+(?:\.\d+)?)\s*\+?\s*years?\s+of\s+total\s+(?:IT\s+)?experience\b/i,
-    /\b(\d+(?:\.\d+)?)\s*\+?\s*years?\s+total\s+(?:IT\s+)?experience\b/i,
-    /\btotal\s+(?:IT\s+)?experience\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?\b/i,
-    /\boverall\s+(?:IT\s+)?experience\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?\b/i,
-    /\b(\d+(?:\.\d+)?)\s*\+?\s*years?\s+of\s+(?:professional|IT)\s+experience\b/i,
-    /\b(\d+(?:\.\d+)?)\s*\+?\s*years?\s+(?:professional|IT)\s+experience\b/i,
+    /\b(\d+(?:\.\d+)?)\s*\+?\s*years?\s+of\s+(?:total\s+)?(?:IT\s+)?(?:professional\s+)?experience\b/i,
+    /\b(\d+(?:\.\d+)?)\s*\+?\s*years?\s+(?:of\s+)?(?:total\s+)?(?:IT\s+)?(?:professional\s+)?experience\b/i,
+    /\btotal\s+(?:IT\s+)?(?:professional\s+)?experience\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?\b/i,
+    /\boverall\s+(?:IT\s+)?(?:professional\s+)?experience\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?\b/i,
+    /\bexperience\s*[:\-]\s*(\d+(?:\.\d+)?)\s*\+?\s*years?\b/i,
+    /\b(\d+(?:\.\d+)?)\s*\+?\s*years?\s+experience\b/i,
   ]
   for (const pattern of patterns) {
-    const match = section.match(pattern)
+    const match = top.match(pattern)
     if (match) return Number(match[1])
   }
   return undefined
@@ -98,11 +97,20 @@ function mergedMonths(ranges: Array<{ start: { year: number; month?: number }, e
 export function calculateExperience(text: string, parsed?: Pick<ParsedResume, 'experienceYears' | 'relevantExperienceYears'>): ExperienceResult {
   const explicit = explicitTotal(text)
   const relevant = explicitRelevant(text) ?? parsed?.relevantExperienceYears
-  if (explicit != null) return { total: explicit, relevant, source: 'explicit' }
+
+  // An explicit total stated by the candidate is the primary source of truth.
+  // This handles common wording such as "7 years of total IT experience" and
+  // prevents dates in awards, education or unrelated sections from changing it.
+  if (explicit != null && explicit >= 0 && explicit <= 60) {
+    return { total: explicit, relevant, source: 'explicit' }
+  }
 
   const ranges = dateRanges(experienceSection(text))
-  if (!ranges.length) return { total: parsed?.experienceYears, relevant, source: parsed?.experienceYears != null ? 'explicit' : 'unavailable' }
+  if (!ranges.length) {
+    return { total: parsed?.experienceYears, relevant, source: parsed?.experienceYears != null ? 'explicit' : 'unavailable' }
+  }
 
   const months = mergedMonths(ranges)
-  return { total: Math.round((months / 12) * 10) / 10, relevant, source: 'date_ranges' }
+  const total = Math.round((months / 12) * 10) / 10
+  return { total, relevant, source: 'date_ranges' }
 }
