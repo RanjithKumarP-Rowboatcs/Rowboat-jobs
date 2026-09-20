@@ -53,34 +53,39 @@ function experienceSection(text: string) {
 }
 
 function explicitTotal(text: string) {
-  const top = text.split(/\n+/).slice(0, 120).join('\n')
+  const top = text.split(/\n+/).slice(0, 80).join('\n')
   const patterns = [
-    /(?:\bexp|\bexperience)\s*[:=]?\s*\(?\s*(\d+(?:\.\d+)?)\s*y(?:ears?|rs?)?\s*(?:&|and|,)\s*(\d+(?:\.\d+)?)\s*m(?:onths?|ths?)/i,
-    /(?:\bexp|\bexperience)\s*[:=]?\s*\(?\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\b/i,
-    /\b(?:more than|over|at least|around|approximately)\s+([a-z]+|\d+(?:\.\d+)?)\s*(?:years?|yrs?)\b/i,
-    /\b(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:total\s+|overall\s+|professional\s+|IT\s+)?experience\b/i,
-    /\btotal\s+(?:IT\s+|professional\s+)?experience\s*[:=]?\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\b/i,
-    /\boverall\s+(?:IT\s+|professional\s+)?experience\s*[:=]?\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\b/i,
-    /\b(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\s+experience\b/i
+    /(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\s+of\s+(?:overall|total|professional)\s+(?:IT\s+)?experience/i,
+    /(?:overall|total)\s+(?:IT\s+)?(?:professional\s+)?experience\s*[:=]?\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)/i,
+    /(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:overall|total|professional)\s+(?:IT\s+)?experience/i,
+    /(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?(?:overall|total)\s+IT\s+experience/i,
+    /(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\s+experience\b/i
   ]
-  for (let i=0; i<patterns.length; i++) {
-    const match = top.match(patterns[i])
-    if (!match) continue
-    if (i === 0) return Math.round((Number(match[1]) + Number(match[2]) / 12) * 10) / 10
-    const n = numberValue(match[1])
-    if (n != null) return n
+  for (const pattern of patterns) {
+    const match=top.match(pattern)
+    if(match){
+      const n=Number(match[1])
+      if(Number.isFinite(n)) return n
+    }
   }
-  return parseDuration(top.match(/\b(?:exp|experience)\s*[:=]\s*\(?([^\n|,)]{3,30})/i)?.[1] || '')
+  const mixed=top.match(/(?:exp|experience)\s*[:=]?\s*\(?\s*(\d+(?:\.\d+)?)\s*y(?:ears?|rs?)\s*(?:&|and|,)\s*(\d+(?:\.\d+)?)\s*m(?:onths?|ths?)/i)
+  if(mixed) return Math.round((Number(mixed[1])+Number(mixed[2])/12)*10)/10
+  return undefined
 }
 
 function explicitRelevant(text: string) {
   const patterns = [
-    /\b(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?relevant\s+experience\b/i,
-    /\brelevant\s+experience\s*[:=]?\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\b/i
+    /(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?relevant\s+experience/i,
+    /relevant\s+experience\s*[:=]?\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)/i,
+    /(?:SAP\s+CPI|Cloud\s+Platform\s+Integration)[^.\n]{0,100}\bwith\s+(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\b/i,
+    /\bwith\s+(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)\s+of\s+hands[-\s]on\s+experience[^.\n]{0,120}\b(?:SAP|CPI|integration)/i
   ]
-  for (const pattern of patterns) {
-    const match = text.match(pattern)
-    if (match) return Number(match[1])
+  for(const pattern of patterns){
+    const match=text.match(pattern)
+    if(match){
+      const n=Number(match[1])
+      if(Number.isFinite(n)) return n
+    }
   }
   return undefined
 }
