@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthContext } from '../../../lib/supabase/authorization'
+import { analyzeResume, extractResumeText } from '../../../lib/talent/resume-parser'
+import { calculateExperience } from '../../../lib/talent/experience'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -20,6 +22,78 @@ async function getRows(supabase:any){const {data,error}=await supabase.from('tal
 export async function GET(request:NextRequest){const {supabase,user,role}=await getAuthContext();if(!user)return NextResponse.json({error:'Sign in required'},{status:401});if(!staffOnly(role))return NextResponse.json({error:'Admin/recruiter access required'},{status:403});try{let rows=dedupe(await getRows(supabase));const q=normalized(request.nextUrl.searchParams.get('search'));if(q)rows=rows.filter(r=>searchable(r).includes(q));return NextResponse.json({candidates:rows.map(mapCandidate),total:rows.length})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to load talent database'},{status:500})}}
 
 export async function POST(request:NextRequest){const {supabase,user,role}=await getAuthContext();if(!user)return NextResponse.json({error:'Sign in required'},{status:401});if(!staffOnly(role))return NextResponse.json({error:'Admin/recruiter access required'},{status:403});try{const body=await request.json();const location=normalized(body.location);const country=normalized(body.country);const state=normalized(body.state);const city=normalized(body.city);const metro=normalized(body.metro);const skills=list(body.skills).map(normalized).filter(Boolean);const minExp=num(body.experienceMin);const minRelevant=num(body.relevantExperienceMin);const maxNotice=num(body.noticeDays);const query=normalized(body.query||'');let rows=dedupe(await getRows(supabase));rows=rows.filter((r:any)=>{const hay=searchable(r);const loc=[r.location,r.country,r.state,r.city,r.metro_area].filter(Boolean).map(normalized).join(' ');if(query&&!hay.includes(query))return false;if(country&&!normalized(r.country).includes(country)&&!loc.includes(country))return false;if(state&&!normalized(r.state).includes(state)&&!loc.includes(state))return false;if(city&&!normalized(r.city).includes(city)&&!loc.includes(city))return false;if(metro&&!normalized(r.metro_area).includes(metro)&&!loc.includes(metro))return false;if(location&&!loc.includes(location)&&!normalized(r.location).includes(location))return false;if(minExp!=null&&!(Number(r.years_experience)>=minExp))return false;if(minRelevant!=null&&!(Number(r.relevant_experience_years)>=minRelevant))return false;if(maxNotice!=null&&!(Number.isFinite(Number(r.notice_period_days))&&Number(r.notice_period_days)<=maxNotice))return false;for(const s of skills){const fields=[r.technology,r.primary_skill,...(r.secondary_skills||[]),...(r.certifications||[]),...(r.projects||[]),...(r.technical_responsibilities||[])].filter(Boolean).map(normalized);if(!fields.some((f:string)=>f.includes(s)))return false}return true});return NextResponse.json({matches:rows.map(mapCandidate),total:rows.length,requirement:{location,skills,minExp,minRelevant,maxNotice,query},message:rows.length?'Exact search matched all requested filters.':'No candidates matched every requested filter.'})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to search talent database'},{status:500})}}
+
+export async function PUT(request:NextRequest){
+  const {supabase,user,role}=await getAuthContext();
+  if(!user)return NextResponse.json({error:'Sign in required'},{status:401});
+  if(!staffOnly(role))return NextResponse.json({error:'Admin/recruiter access required'},{status:403});
+  try{
+    const body=await request.json();
+    const id=text(body?.candidate_id);
+    if(!id)return NextResponse.json({error:'candidate_id is required'},{status:400});
+    const {data:candidate,error:readError}=await supabase.from('talent_pool_candidates').select('*').eq('id',id).maybeSingle();
+    if(readError)return NextResponse.json({error:readError.message},{status:500});
+    if(!candidate)return NextResponse.json({error:'Candidate profile not found'},{status:404});
+    if(!candidate.resume_storage_path)return NextResponse.json({error:'This candidate has no stored resume.'},{status:400});
+
+    const fileName=candidate.resume_file_name||candidate.resume_storage_path.split('/').pop()||'resume.pdf';
+    const lower=fileName.toLowerCase();
+    const mime=lower.endsWith('.pdf')?'application/pdf':lower.endsWith('.docx')?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':lower.endsWith('.doc')?'application/msword':'';
+    if(!mime)return NextResponse.json({error:'Stored resume format is not supported.'},{status:400});
+
+    const downloaded=await supabase.storage.from('candidate-resumes').download(candidate.resume_storage_path);
+    if(downloaded.error||!downloaded.data)return NextResponse.json({error:downloaded.error?.message||'Unable to read stored resume.'},{status:404});
+    const buffer=Buffer.from(await downloaded.data.arrayBuffer());
+    const rawText=await extractResumeText(buffer,mime);
+    if(!rawText||rawText.length<30)return NextResponse.json({error:'Stored resume text could not be read.'},{status:400});
+
+    const parsed=analyzeResume(rawText);
+    const experience=calculateExperience(rawText,parsed);
+    const next:any={
+      full_name:parsed.fullName||candidate.full_name,
+      email:parsed.email||candidate.email,
+      phone:parsed.phone||candidate.phone,
+      location:parsed.location||candidate.location,
+      technology:parsed.technology||candidate.technology,
+      primary_skill:parsed.primarySkill||candidate.primary_skill,
+      secondary_skills:parsed.secondarySkills.length?parsed.secondarySkills:(candidate.secondary_skills||[]),
+      years_experience:experience.total??candidate.years_experience,
+      relevant_experience_years:experience.relevant??candidate.relevant_experience_years,
+      industry:parsed.industry||candidate.industry,
+      current_company:parsed.currentCompany||candidate.current_company,
+      candidate_current_role:parsed.currentRole||candidate.candidate_current_role||candidate.current_role,
+      previous_companies:parsed.previousCompanies.length?parsed.previousCompanies:(candidate.previous_companies||[]),
+      notice_period_days:parsed.noticePeriodDays??candidate.notice_period_days,
+      availability:parsed.noticePeriodDays===0?'Immediate':parsed.noticePeriodDays!=null?String(parsed.noticePeriodDays)+' days':candidate.availability,
+      current_compensation:parsed.currentCompensation??candidate.current_compensation,
+      expected_compensation:parsed.expectedCompensation??candidate.expected_compensation,
+      employment_type:parsed.employmentType||candidate.employment_type,
+      work_authorization:parsed.workAuthorization||candidate.work_authorization,
+      certifications:parsed.certifications.length?parsed.certifications:(candidate.certifications||[]),
+      projects:parsed.projects.length?parsed.projects:(candidate.projects||[]),
+      education_text:parsed.education.length?parsed.education:(candidate.education_text||[]),
+      technical_responsibilities:parsed.technicalResponsibilities.length?parsed.technicalResponsibilities:(candidate.technical_responsibilities||[]),
+      management_responsibilities:parsed.managementResponsibilities.length?parsed.managementResponsibilities:(candidate.management_responsibilities||[]),
+      achievements_text:parsed.achievements.length?parsed.achievements:(candidate.achievements_text||[]),
+      linkedin_url:parsed.linkedinUrl||candidate.linkedin_url,
+      resume_text:rawText,
+      ai_summary:parsed.aiSummary,
+      ai_extracted_skills:[parsed.primarySkill,...parsed.secondarySkills].filter(Boolean),
+      ai_certifications:parsed.certifications,
+      parse_status:'completed',
+      parse_error:null,
+      parsed_at:new Date().toISOString(),
+      email_normalized:normalized(parsed.email||candidate.email),
+      phone_normalized:digits(parsed.phone||candidate.phone),
+      name_normalized:normalized(parsed.fullName||candidate.full_name)
+    };
+    const {data,error}=await supabase.from('talent_pool_candidates').update(next).eq('id',id).select('*').single();
+    if(error)return NextResponse.json({error:error.message},{status:500});
+    return NextResponse.json({candidate:mapCandidate(data),extracted:parsed,experience_calculation:{total_years:experience.total,relevant_years:experience.relevant,source:experience.source}});
+  }catch(e){
+    return NextResponse.json({error:e instanceof Error?e.message:'Unable to re-read resume'},{status:500});
+  }
+}
 
 export async function PATCH(request:NextRequest){const {supabase,user,role}=await getAuthContext();if(!user)return NextResponse.json({error:'Sign in required'},{status:401});if(!staffOnly(role))return NextResponse.json({error:'Admin/recruiter access required'},{status:403});try{const body=await request.json();const id=text(body.candidate_id);if(!id)return NextResponse.json({error:'candidate_id is required'},{status:400});const allowed=['full_name','email','phone','location','country','state','city','metro_area','preferred_location','date_of_birth','pan_number','pf_active_all_employments','highest_education_qualification','highest_education_year','technology','primary_skill','secondary_skills','years_experience','relevant_experience_years','industry','current_company','candidate_current_role','current_role','previous_companies','notice_period_days','availability','current_compensation','expected_compensation','employment_type','work_authorization','certifications','projects','linkedin_url','education_text','education','technical_responsibilities','management_responsibilities','achievements_text','achievements','candidate_status','source','recruiter','recruiter_notes'];const payload:any={};for(const k of allowed)if(body[k]!==undefined)payload[k]=['secondary_skills','previous_companies','certifications','projects','education_text','education','technical_responsibilities','management_responsibilities','achievements_text','achievements'].includes(k)?list(body[k]):body[k];if(payload.email!==undefined)payload.email_normalized=normalized(payload.email);if(payload.phone!==undefined)payload.phone_normalized=digits(payload.phone);if(payload.full_name!==undefined)payload.name_normalized=normalized(payload.full_name);const {data,error}=await supabase.from('talent_pool_candidates').update(payload).eq('id',id).select('*').single();if(error)return NextResponse.json({error:error.message},{status:500});return NextResponse.json({candidate:mapCandidate(data)})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to update candidate'},{status:500})}}
 
