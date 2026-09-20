@@ -88,21 +88,30 @@ function extractDateOfBirth(text: string) { const m=text.match(/(?:date of birth
 function extractPan(text: string) { const m=text.match(/(?:PAN|PAN No\.?|Permanent Account Number)\s*[:\-]?\s*([A-Z]{5}\d{4}[A-Z])/i); return m?.[1]?.toUpperCase() }
 function extractPfStatus(text: string) { if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(active|yes|available|all employment|all employers)\b/i.test(text)||/\b(active|yes)\b[\s\S]{0,80}\b(PF|EPF|provident fund)\b/i.test(text)) return true; if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(no|not active|inactive|not available)\b/i.test(text)) return false; return undefined }
 function extractEducationYear(text: string) {
-  const section = extractEducation(text).join(' ')
-  const degreeFirst = section.match(/\b(?:Ph\.?\s*D|Doctorate|M\.?\s*Tech|MTech|M\.?\s*E\.?|MBA|MCA|M\.?\s*Sc|Master(?:'s)?|B\.?\s*Tech|BTech|B\.?\s*E\.?|BCA|B\.?\s*Sc|Bachelor(?:'s)?|Diploma|Polytechnic)\b[\s\S]{0,180}?\b((?:19|20)\d{2})\b/i)
-  if (degreeFirst) return Number(degreeFirst[1])
-  const years=[...section.matchAll(/\b((?:19|20)\d{2})\b/g)].map(m=>Number(m[1]))
-  return years.length ? Math.max(...years) : undefined
+  const lines=linesOf(text)
+  const degree=/\b(?:Ph\.?\s*D|Doctorate|M\.?\s*Tech|MTech|M\.?\s*E\.?|MBA|MCA|M\.?\s*Sc|Master(?:'s)?|B\.?\s*Tech|BTech|B\.?\s*E\.?|BCA|B\.?\s*Sc|Bachelor(?:'s)?|Diploma|Polytechnic)\b/i
+  for(let i=0;i<lines.length;i++){
+    if(!degree.test(lines[i]))continue
+    const nearby=lines.slice(Math.max(0,i-3),Math.min(lines.length,i+4)).join(' ')
+    const years=[...nearby.matchAll(/\b((?:19|20)\d{2})\b/g)].map(m=>Number(m[1]))
+    if(years.length){
+      const yearScores=years.map(year=>({year,score:Math.abs(year-(new Date().getFullYear()-15))}))
+      yearScores.sort((a,b)=>a.score-b.score)
+      return yearScores[0].year
+    }
+  }
+  const values=extractEducation(text).join(' ')
+  const fallback=[...values.matchAll(/\b((?:19|20)\d{2})\b/g)].map(m=>Number(m[1]))
+  return fallback.length?Math.max(...fallback):undefined
 }
 function extractHighestEducation(text: string) {
-  const section = extractEducation(text).join(' ')
   const degrees = [
     {rank:5,pattern:/\b(?:Ph\.?\s*D|Doctorate|Doctor of Philosophy)\b/i,label:'Ph.D'},
     {rank:4,pattern:/\b(?:M\.?\s*Tech|MTech|M\.?\s*E\.?|MBA|MCA|M\.?\s*Sc|Master(?:'s)?\b)/i,label:'Master'},
     {rank:3,pattern:/\b(?:B\.?\s*Tech|BTech|B\.?\s*E\.?|BCA|B\.?\s*Sc|Bachelor(?:'s)?\b)/i,label:'Bachelor'},
     {rank:2,pattern:/\b(?:Diploma|Polytechnic)\b/i,label:'Diploma'}
   ]
-  const found=degrees.map(d=>({...d,match:section.match(d.pattern)})).filter(d=>d.match)
+  const found=degrees.map(d=>({...d,match:text.match(d.pattern)})).filter(d=>d.match)
   if(!found.length)return undefined
   found.sort((a,b)=>b.rank-a.rank)
   const top=found[0]
@@ -150,7 +159,19 @@ function extractCompanies(text:string){const companies:string[]=[];for(const lin
 function extractSectionFlexible(text:string,headings:string[]){const lines=linesOf(text);const aliases=headings.map(h=>h.toLowerCase());const normalizeHeading=(line:string)=>line.toLowerCase().replace(/^[-•●➢▪◦*\s]+/,'').replace(/\s*\([^)]*\)\s*$/,'').replace(/[:\-]+$/,'').trim();const start=lines.findIndex(line=>aliases.includes(normalizeHeading(line)));if(start<0)return[];const values:string[]=[];for(let i=start+1;i<lines.length&&values.length<60;i++){if(isHeading(lines[i]))break;const value=lines[i].replace(/^[\-–—•●➢▪◦*]\s*/,'').trim();if(value.length>=3&&value.length<=800)values.push(value)}return values}
 function extractCertifications(text:string){return extractSectionFlexible(text,['certifications','certificates','professional certifications'])}
 function extractProjects(text:string){return extractSectionFlexible(text,['projects','key projects','project experience','project history'])}
-function extractEducation(text:string){return extractSectionFlexible(text,['education','academic background','qualifications','academic qualifications'])}
+function extractEducation(text:string){
+  const lines=linesOf(text)
+  const degree=/\b(?:Ph\.?\s*D|Doctorate|M\.?\s*Tech|MTech|M\.?\s*E\.?|MBA|MCA|M\.?\s*Sc|Master(?:'s)?|B\.?\s*Tech|BTech|B\.?\s*E\.?|BCA|B\.?\s*Sc|Bachelor(?:'s)?|Diploma|Polytechnic)\b/i
+  const hits=lines.map((line,i)=>degree.test(line)?i:-1).filter(i=>i>=0)
+  if(hits.length){
+    const values:string[]=[]
+    for(const i of hits.slice(0,10)){
+      values.push(...lines.slice(Math.max(0,i-2),Math.min(lines.length,i+2)).filter(line=>!isHeading(line)))
+    }
+    return unique(values).slice(0,30)
+  }
+  return extractSectionFlexible(text,['education','academic background','qualifications','academic qualifications'])
+}
 function extractAchievements(text:string){return extractSectionFlexible(text,['achievements','awards','accomplishments','recognition'])}
 function extractResponsibilities(text:string,type:'technical'|'management'){return extractSectionFlexible(text,type==='technical'?['technical responsibilities','technical skills and responsibilities','key responsibilities','responsibilities']:['management responsibilities','leadership responsibilities','management and leadership','leadership'])}
 function extractMoney(text:string,labels:string[]){const label=labels.map(v=>v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');const m=text.match(new RegExp(`(?:${label})\\s*[:\\-]?\\s*(?:INR|Rs\\.?|₹)?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(lpa|lakhs?|lakh|crore|cr)?`,'i'));if(!m)return undefined;const n=Number(m[1]);const unit=(m[2]||'').toLowerCase();return unit==='lpa'||unit==='lakh'||unit==='lakhs'?n*100000:unit==='cr'||unit==='crore'?n*10000000:n}
