@@ -56,15 +56,29 @@ function looksLikeName(value: string) { const line = value.replace(/^[•●➢�
 function extractName(text: string) {
   const lines = linesOf(text).slice(0, 30)
   const banned = new Set(['resume','curriculum vitae','cv','professional summary','summary','skills','education','work history','automated deployments','contact','profile','objective'])
+  const joinedHeader = text.match(/^\s*([A-Z][A-Z.'-]{2,30})\s+(?:professional\s+summary|summary|profile|objective)\s*\n+\s*([A-Z][A-Z.'-]{2,30})\b/i)
+  if (joinedHeader) {
+    const candidate = joinedHeader[1] + ' ' + joinedHeader[2]
+    if (looksLikeName(candidate)) return candidate
+  }
+  const firstLines = text.split(/\n+/).map(v => v.trim()).filter(Boolean).slice(0, 12)
+  for (let i=0;i<firstLines.length;i++) {
+    const line=firstLines[i]
+    const twoWords=line.match(/^([A-Z][A-Z.'-]{2,30})\s+([A-Z][A-Z.'-]{2,30})(?=\s|$)/)
+    if (twoWords) {
+      const candidate=twoWords[1]+' '+twoWords[2]
+      if (looksLikeName(candidate)) return candidate
+    }
+  }
   for (let i=0;i<Math.min(lines.length-1,15);i++) {
     const a=lines[i], b=lines[i+1]
     if (/^[A-Z][A-Z.'-]{1,30}$/.test(a) && /^[A-Z][A-Z.'-]{1,30}$/.test(b)) {
-      const candidate = a + ' ' + b
+      const candidate=a+' '+b
       if (looksLikeName(candidate) && !banned.has(candidate.toLowerCase())) return candidate
     }
   }
   for (const line of lines) {
-    const value=line.replace(/^[•●➢▪◦*\\-\\s]+/,'').trim()
+    const value=line.replace(/^[•●➢▪◦*\-\s]+/,'').trim()
     if (!banned.has(value.toLowerCase()) && looksLikeName(value)) return value
   }
   return undefined
