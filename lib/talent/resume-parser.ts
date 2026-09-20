@@ -103,28 +103,26 @@ function extractEducationYear(text: string) {
     const start=Math.max(0,match.index-100)
     const end=Math.min(text.length,match.index+180)
     const window=text.slice(start,end)
-    const nearby=[...window.matchAll(/\b((?:19|20)\d{2})\b/g)].map(m=>({year:Number(m[1]),distance:Math.abs((start+(m.index||0))-match.index)}))
+    const nearby=[...window.matchAll(/\\b((?:19|20)\\d{2})\\b/g)].map(m=>({year:Number(m[1]),distance:Math.abs((start+(m.index||0))-match.index)}))
     if(nearby.length) years.push(nearby.sort((a,b)=>a.distance-b.distance)[0].year)
   }
   if(years.length)return years[0]
   const education=extractEducation(text).join(' ')
-  const fallback=[...education.matchAll(/\b((?:19|20)\d{2})\b/g)].map(m=>Number(m[1]))
+  const fallback=[...education.matchAll(/\\b((?:19|20)\\d{2})\\b/g)].map(m=>Number(m[1]))
   return fallback.length?Math.max(...fallback):undefined
 }
 function extractHighestEducation(text: string) {
   const degrees = [
-    {rank:5,pattern:/\\b(?:Ph\\.?\\s*D|Doctorate|Doctor of Philosophy)\\b/i,label:'Ph.D'},
-    {rank:4,pattern:/\\b(?:M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?\\b[^\\n]{0,60})/i,label:'Master\\'s'},
-    {rank:3,pattern:/\\b(?:B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?\\b[^\\n]{0,60})/i,label:'Bachelor'},
-    {rank:2,pattern:/\\b(?:Diploma|Polytechnic)\\b/i,label:'Diploma'}
+    {rank:5,pattern:/\\b(?:Ph\\.?\\s*D|Doctorate|Doctor of Philosophy)\\b/i,label:"Ph.D"},
+    {rank:4,pattern:/\\b(?:M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?\\b)/i,label:"Master"},
+    {rank:3,pattern:/\\b(?:B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?\\b)/i,label:"Bachelor"},
+    {rank:2,pattern:/\\b(?:Diploma|Polytechnic)\\b/i,label:"Diploma"}
   ]
   const found = degrees.map(d => ({...d,match:text.match(d.pattern)})).filter(d=>d.match)
   if(!found.length)return undefined
   found.sort((a,b)=>b.rank-a.rank)
   const top=found[0]
-  const raw=(top.match?.[0]||top.label).replace(/\\s+/g,' ').trim()
-  if(top.label==='Bachelor'&&/B\\.?\\s*Tech|BTech/i.test(raw)) return 'Bachelor of Technology (B.Tech)'
-  if(top.label==='Master') return raw.length<100?raw:'Master\\'s'
+  if(top.label==="Bachelor"&&/B\\.?\\s*Tech|BTech/i.test(top.match?.[0]||'')) return "Bachelor of Technology (B.Tech)"
   return top.label
 }
 function extractLocation(text: string) {
