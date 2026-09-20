@@ -41,12 +41,14 @@ export async function PATCH(request: NextRequest) {
   }
 
   const patch: Record<string, any> = {}
-  const textProfileFields = ['full_name','phone','resume_url','linkedin_url','company_name','company_website','location']
+  const textProfileFields = ['full_name','phone','resume_url','linkedin_url','company_name','company_website','location','preferred_location','date_of_birth','pan_number','highest_education_qualification']
   for (const key of textProfileFields) {
     if (Object.prototype.hasOwnProperty.call(input, key)) patch[key] = String(input[key] || '').trim() || null
   }
   if (Object.prototype.hasOwnProperty.call(input, 'experience_years')) patch.experience_years = input.experience_years === '' || input.experience_years == null ? null : Number(input.experience_years)
   if (Object.prototype.hasOwnProperty.call(input, 'notice_period_days')) patch.notice_period_days = input.notice_period_days === '' || input.notice_period_days == null ? null : Number(input.notice_period_days)
+  if (Object.prototype.hasOwnProperty.call(input, 'pf_active_all_employments')) patch.pf_active_all_employments = input.pf_active_all_employments == null || input.pf_active_all_employments === '' ? null : Boolean(input.pf_active_all_employments)
+  if (Object.prototype.hasOwnProperty.call(input, 'highest_education_year')) patch.highest_education_year = input.highest_education_year === '' || input.highest_education_year == null ? null : Number(input.highest_education_year)
 
   const { data, error } = Object.keys(patch).length
     ? await supabase.from('profiles').update(patch).eq('id', user.id).select('*').single()
