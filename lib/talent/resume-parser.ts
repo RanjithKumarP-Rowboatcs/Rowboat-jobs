@@ -90,27 +90,35 @@ function extractDateOfBirth(text: string) { const m=text.match(/(?:date of birth
 function extractPan(text: string) { const m=text.match(/(?:PAN|PAN No\.?|Permanent Account Number)\s*[:\-]?\s*([A-Z]{5}\d{4}[A-Z])/i); return m?.[1]?.toUpperCase() }
 function extractPfStatus(text: string) { if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(active|yes|available|all employment|all employers)\b/i.test(text)||/\b(active|yes)\b[\s\S]{0,80}\b(PF|EPF|provident fund)\b/i.test(text)) return true; if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(no|not active|inactive|not available)\b/i.test(text)) return false; return undefined }
 function extractEducationYear(text: string) {
-  const matches = [...text.matchAll(/(?:B\\.Tech|BTech|Bachelor(?:'s)?\\s+of\\s+Technology|B\\.E\\.?|Bachelor(?:'s)?|M\\.Tech|MTech|Master(?:'s)?|MBA|MCA|Ph\\.D|Doctorate)[^\\n]{0,140}?\\b((?:19|20)\\d{2})\\b/gi)]
-  if (matches.length) return Math.max(...matches.map(m => Number(m[1])))
-  const education = extractEducation(text).join(' ')
-  const years = [...education.matchAll(/\\b((?:19|20)\\d{2})\\b/g)].map(m=>Number(m[1]))
-  return years.length ? Math.max(...years) : undefined
-}
-function extractHighestEducation(text: string) {
   const patterns = [
-    /\\b(Ph\\.?\\s*D|Doctorate|Doctor of Philosophy)\\b[^\\n]{0,120}/i,
-    /\\b(M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?(?:\\s+of[^\\n]{0,40})?)\\b[^\\n]{0,120}/i,
-    /\\b(B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?(?:\\s+of[^\\n]{0,40})?)\\b[^\\n]{0,120}/i,
-    /\\b(Diploma|Polytechnic)\\b[^\\n]{0,100}/i
+    /(?:Ph\\.?\\s*D|Doctorate|Doctor of Philosophy|M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?|B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?|Diploma|Polytechnic)[^\\n]{0,140}?\\b((?:19|20)\\d{2})\\b/gi,
+    /\\b((?:19|20)\\d{2})\\b[^\\n]{0,140}?(?:Ph\\.?\\s*D|Doctorate|Doctor of Philosophy|M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?|B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?|Diploma|Polytechnic)\\b/gi
   ]
-  for (const pattern of patterns) {
-    const match=text.match(pattern)
-    if (match?.[0]) {
-      const value=match[0].replace(/\\s+/g,' ').trim().replace(/[|•]+$/,'').trim()
-      return value.length>180 ? value.slice(0,180) : value
+  const years:number[]=[]
+  for(const pattern of patterns){
+    for(const match of text.matchAll(pattern)){
+      const raw=match[1]
+      const n=Number(raw)
+      if(Number.isFinite(n)&&n>=1900&&n<=2100) years.push(n)
     }
   }
-  return undefined
+  return years.length?Math.max(...years):undefined
+}
+function extractHighestEducation(text: string) {
+  const degrees = [
+    {rank:5,pattern:/\\b(?:Ph\\.?\\s*D|Doctorate|Doctor of Philosophy)\\b/i,label:'Ph.D'},
+    {rank:4,pattern:/\\b(?:M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?\\b[^\\n]{0,60})/i,label:'Master\\'s'},
+    {rank:3,pattern:/\\b(?:B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?\\b[^\\n]{0,60})/i,label:'Bachelor'},
+    {rank:2,pattern:/\\b(?:Diploma|Polytechnic)\\b/i,label:'Diploma'}
+  ]
+  const found = degrees.map(d => ({...d,match:text.match(d.pattern)})).filter(d=>d.match)
+  if(!found.length)return undefined
+  found.sort((a,b)=>b.rank-a.rank)
+  const top=found[0]
+  const raw=(top.match?.[0]||top.label).replace(/\\s+/g,' ').trim()
+  if(top.label==='Bachelor'&&/B\\.?\\s*Tech|BTech/i.test(raw)) return 'Bachelor of Technology (B.Tech)'
+  if(top.label==='Master') return raw.length<100?raw:'Master\\'s'
+  return top.label
 }
 function extractLocation(text: string) {
   const labelled = extractLabeled(text, ['current location','location','based in','residing in','current city','city']);
