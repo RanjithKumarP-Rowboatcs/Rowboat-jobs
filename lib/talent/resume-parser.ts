@@ -54,11 +54,24 @@ function extractLinkedIn(text: string) { const m = text.match(/(?:https?:\/\/)?(
 function isHeading(line: string) { const value = line.toLowerCase().replace(/^[-•●➢▪◦*\s]+/, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/[:\-]+$/, '').trim(); return SECTION_NAMES.some(name => value === name || value.startsWith(`${name} `)) }
 function looksLikeName(value: string) { const line = value.replace(/^[•●➢▪◦*\-\s]+/, '').trim(); const words = line.split(/\s+/).filter(Boolean); if (words.length < 2 || words.length > 5 || line.length > 70 || NAME_STOP.test(line)) return false; if (/@|https?:\/\/|\d|linkedin|phone|email/i.test(line)) return false; return words.every(word => /^[A-Za-z][A-Za-z.'-]*$/.test(word)) }
 function extractName(text: string) {
-  const lines = linesOf(text).slice(0, 25)
-  for (const line of lines) if (looksLikeName(line)) return line
-  const titleWords = '(?:Senior|Lead|Principal|Consultant|Engineer|Developer|Architect|Analyst|Manager|Specialist|Professional|SAP|Software|Data|IT|BASIS|HANA)'
-  for (const line of lines) { const m = line.match(new RegExp(`^([A-Za-z][A-Za-z.'-]+(?:\\s+[A-Za-z][A-Za-z.'-]+){1,3})(?=\\s+(?:${titleWords})\\b|\\s*[-|,])`, 'i')); if (m?.[1] && looksLikeName(m[1])) return m[1] }
-  return undefined
+  const labeled = extractLabeled(text, ['candidate name','full name','name']);
+  if (labeled && looksLikeName(labeled)) return labeled;
+  const lines = linesOf(text).slice(0, 30);
+  const roleWords = /\b(senior|junior|lead|principal|consultant|engineer|developer|architect|analyst|manager|specialist|professional|software|technology|integration|solution|administrator|basis|cpi|datasphere|hana|full\s*stack|cloud|data|sap)\b/i;
+  const candidates = lines
+    .filter(line => looksLikeName(line))
+    .filter(line => !roleWords.test(line))
+    .filter(line => !/^\d/.test(line));
+  if (candidates.length) return candidates.sort((a,b) => {
+    const ai = lines.indexOf(a);
+    const bi = lines.indexOf(b);
+    const score = (line:string) => {
+      const words = line.split(/\s+/).length;
+      return (words === 2 ? 20 : words === 3 ? 10 : 0) - lines.indexOf(line);
+    };
+    return score(b) - score(a) || ai - bi;
+  })[0];
+  return undefined;
 }
 function extractSkills(text: string) { const lower = text.toLowerCase(); return unique(SKILLS.filter(skill => lower.includes(skill.toLowerCase()))) }
 function extractLabeled(text: string, labels: string[]) { const label = labels.map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'); return firstMatch(text, [new RegExp(`(?:^|\\n)\\s*(?:${label})\\s*[:\\-]\\s*([^\\n]{2,180})`, 'im')]) }
@@ -68,7 +81,22 @@ function extractPan(text: string) { const m=text.match(/(?:PAN|PAN No\.?|Permane
 function extractPfStatus(text: string) { if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(active|yes|available|all employment|all employers)\b/i.test(text)||/\b(active|yes)\b[\s\S]{0,80}\b(PF|EPF|provident fund)\b/i.test(text)) return true; if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(no|not active|inactive|not available)\b/i.test(text)) return false; return undefined }
 function extractEducationYear(text: string) { const values=extractEducation(text); const years=values.flatMap(v=>[...v.matchAll(/\b(?:19|20)\d{2}\b/g)].map(m=>Number(m[0]))); return years.length?Math.max(...years):undefined }
 function extractHighestEducation(text: string) { const values=extractEducation(text); if(!values.length)return undefined; const ranked=['phd','doctorate','post doctoral','m.tech','m.e','master','mba','mca','m.sc','b.tech','b.e','bachelor','bca','b.sc','diploma']; const sorted=[...values].sort((a,b)=>{const ra=ranked.findIndex(x=>a.toLowerCase().includes(x));const rb=ranked.findIndex(x=>b.toLowerCase().includes(x));return (ra<0?999:ra)-(rb<0?999:rb)}); return sorted[0] }
-function extractLocation(text: string) { const labelled = extractLabeled(text, ['current location','location','based in','residing in','city']); if (labelled) return labelled.replace(/\b(?:linkedin|email|phone)\b.*$/i, '').trim(); const commonCities = ['Hyderabad','Pune','Mumbai','Bengaluru','Bangalore','Chennai','Delhi','Gurgaon','Gurugram','Noida','Kolkata','Ahmedabad','Jaipur','Kochi','Coimbatore','Mysore','Nashik','Nagpur']; for (const city of commonCities) if (new RegExp(`\\b${city}\\b`, 'i').test(text)) return city; return linesOf(text).slice(0, 15).find(line => /\b[A-Za-z .'-]+,\s*[A-Za-z .'-]+\b/.test(line) && !line.includes('@') && !/linkedin|phone/i.test(line))?.replace(/\|.*$/, '').trim() }
+function extractLocation(text: string) {
+  const labelled = extractLabeled(text, ['current location','location','based in','residing in','current city','city']);
+  if (labelled) {
+    const cleaned = labelled
+      .split(/\s*(?:\||;|\bcontact\b|\bphone\b|\bemail\b|\blinkedin\b|\bgithub\b)\s*/i)[0]
+      .replace(/[,:\-]+$/, '')
+      .trim();
+    if (cleaned.length >= 2 && cleaned.length <= 100) return cleaned;
+  }
+  const lines = linesOf(text).slice(0, 20);
+  for (const line of lines) {
+    const cityMatch = line.match(/\b(Hyderabad|Pune|Mumbai|Bengaluru|Bangalore|Chennai|Delhi|Gurgaon|Gurugram|Noida|Kolkata|Ahmedabad|Jaipur|Kochi|Coimbatore|Mysore|Nashik|Nagpur|Indore|Visakhapatnam|Vijayawada)\b(?:\s*,\s*([A-Za-z .-]+))?/i);
+    if (cityMatch) return cityMatch[2] ? cityMatch[0].trim() : cityMatch[1];
+  }
+  return undefined;
+}
 function extractExperience(text: string) { const total = firstMatch(text,[/(?:total|overall|professional|IT)\s*(?:IT\s*)?(?:professional\s*)?(?:experience)?\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?/i,/(\d+(?:\.\d+)?)\s*\+?\s*years?\s+(?:of\s+)?(?:total\s+|overall\s+|professional\s+|IT\s+)?experience/i,/(?:experience|exp)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?/i]); const relevant = firstMatch(text,[/(\d+(?:\.\d+)?)\s*\+?\s*years?\s+(?:of\s+)?relevant\s+experience/i,/relevant\s+experience\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?/i]); if (total) return { total:Number(total), relevant:relevant?Number(relevant):undefined }; const ranges=[...text.matchAll(/\b(19\d{2}|20\d{2})\s*(?:[/.]\s*\d{1,2})?\s*(?:-|–|—|to)\s*(?:(19\d{2}|20\d{2})\s*(?:[/.]\s*\d{1,2})?|present|current|till\s+date)\b/gi)]; if(!ranges.length) return {total:undefined,relevant:relevant?Number(relevant):undefined}; const earliest=Math.min(...ranges.map(r=>Number(r[1]))); return {total:Math.max(0,Math.round((new Date().getFullYear()-earliest)*10)/10),relevant:relevant?Number(relevant):undefined} }
 function extractNotice(text: string) { if (/\b(immediate joiner|immediate joining|can join immediately|available immediately|join immediately)\b/i.test(text)) return 0; const m=text.match(/(?:notice\s+period|notice)\s*[:\-]?\s*(\d+)\s*(days?|weeks?|months?)/i); if(!m) return undefined; const n=Number(m[1]); const unit=m[2].toLowerCase(); return unit.startsWith('month')?n*30:unit.startsWith('week')?n*7:n }
 function extractCurrentEmployment(text: string) { const labelledCompany=extractLabeled(text,['current company','current employer','present company','employer']); const labelledRole=extractLabeled(text,['current role','current designation','designation','job title','title','role']); if(labelledCompany||labelledRole) return {company:labelledCompany,role:labelledRole}; const lines=linesOf(text); const start=lines.findIndex(line=>/^(professional |work |employment |career )?(experience|history)$/i.test(line)); const window=lines.slice(start>=0?start+1:0,start>=0?start+45:45); for(const line of window){const m=line.match(/^(.+?)\s*\(([^)]*(?:current|present|till date)[^)]*)\)\s*[-–—|:]\s*(.+)$/i); if(m) return {company:m[1].trim(),role:m[3].trim()}} return {company:undefined,role:undefined} }
