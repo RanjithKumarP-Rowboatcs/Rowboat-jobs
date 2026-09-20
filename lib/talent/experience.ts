@@ -103,7 +103,7 @@ function toIndex(value:{year:number,month?:number}) {
 
 function dateRanges(section:string) {
   const monthName = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t)?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)'
-  const date = '(?:(?:' + monthName + ')\s+|\d{1,2}[\/.]\s*)?(?:19\d{2}|20\d{2})'
+  const date = '(?:(?:' + monthName + ')\\s+|\\d{1,2}[\\/.]\\s*)?(?:19\\d{2}|20\\d{2})'
   const range = new RegExp('\\b(' + date + ')\\s*(?:-|–|—|to)\\s*(' + date + '|present|current|till\\s+date|till\\s+now)\\b','gi')
   const ranges:Array<{start:{year:number,month?:number},end:{year:number,month?:number}}> = []
   for (const match of section.matchAll(range)) {
