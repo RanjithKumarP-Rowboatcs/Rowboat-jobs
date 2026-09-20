@@ -130,7 +130,25 @@ function extractLocation(text: string) {
 }
 function extractExperience(text: string) { const total = firstMatch(text,[/(?:total|overall|professional|IT)\s*(?:IT\s*)?(?:professional\s*)?(?:experience)?\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?/i,/(\d+(?:\.\d+)?)\s*\+?\s*years?\s+(?:of\s+)?(?:total\s+|overall\s+|professional\s+|IT\s+)?experience/i,/(?:experience|exp)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?/i]); const relevant = firstMatch(text,[/(\d+(?:\.\d+)?)\s*\+?\s*years?\s+(?:of\s+)?relevant\s+experience/i,/relevant\s+experience\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*\+?\s*years?/i]); if (total) return { total:Number(total), relevant:relevant?Number(relevant):undefined }; const ranges=[...text.matchAll(/\b(19\d{2}|20\d{2})\s*(?:[/.]\s*\d{1,2})?\s*(?:-|–|—|to)\s*(?:(19\d{2}|20\d{2})\s*(?:[/.]\s*\d{1,2})?|present|current|till\s+date)\b/gi)]; if(!ranges.length) return {total:undefined,relevant:relevant?Number(relevant):undefined}; const earliest=Math.min(...ranges.map(r=>Number(r[1]))); return {total:Math.max(0,Math.round((new Date().getFullYear()-earliest)*10)/10),relevant:relevant?Number(relevant):undefined} }
 function extractNotice(text: string) { if (/\b(immediate joiner|immediate joining|can join immediately|available immediately|join immediately)\b/i.test(text)) return 0; const m=text.match(/(?:notice\s+period|notice)\s*[:\-]?\s*(\d+)\s*(days?|weeks?|months?)/i); if(!m) return undefined; const n=Number(m[1]); const unit=m[2].toLowerCase(); return unit.startsWith('month')?n*30:unit.startsWith('week')?n*7:n }
-function extractCurrentEmployment(text: string) { const labelledCompany=extractLabeled(text,['current company','current employer','present company','employer']); const labelledRole=extractLabeled(text,['current role','current designation','designation','job title','title','role']); if(labelledCompany||labelledRole) return {company:labelledCompany,role:labelledRole}; const lines=linesOf(text); const start=lines.findIndex(line=>/^(professional |work |employment |career )?(experience|history)$/i.test(line)); const window=lines.slice(start>=0?start+1:0,start>=0?start+45:45); for(const line of window){const m=line.match(/^(.+?)\s*\(([^)]*(?:current|present|till date)[^)]*)\)\s*[-–—|:]\s*(.+)$/i); if(m) return {company:m[1].trim(),role:m[3].trim()}} return {company:undefined,role:undefined} }
+function extractCurrentEmployment(text: string) {
+  const labelledCompany=extractLabeled(text,['current company','current employer','present company','employer']);
+  const labelledRole=extractLabeled(text,['current role','current designation','designation','job title','title','role']);
+  if(labelledCompany||labelledRole) return {company:labelledCompany,role:labelledRole};
+  const lines=linesOf(text);
+  const start=lines.findIndex(line=>/^(professional |work |employment |career )?(experience|history)$/i.test(line));
+  const window=lines.slice(start>=0?start+1:0,start>=0?start+70:70);
+  for(let i=0;i<window.length;i++){
+    const line=window[i];
+    const next=window[i+1]||'';
+    const dateLine=/\b(?:\d{1,2}[\/.])?\d{4}\b[\s\S]*\b(?:current|present|till\s+date|till\s+now)\b/i.test(next) || /\b(?:current|present|till\s+date|till\s+now)\b/i.test(line);
+    if(!dateLine) continue;
+    const m=line.match(/^(.+?)\s*(?:\s[-|:]\s|\s+[-–—]\s+)(.+)$/);
+    if(m&&m[1].length<=100&&m[2].length<=100) return {company:m[1].trim(),role:m[2].trim()};
+    const simple=line.match(/^(.+?)\s*[-–—|:]\s*(Senior|Lead|Principal|Consultant|Engineer|Developer|Architect|Analyst|Manager|Specialist|Administrator|Associate)\b\s*(.*)$/i);
+    if(simple) return {company:simple[1].trim(),role:[simple[2],simple[3]].filter(Boolean).join(' ').trim()};
+  }
+  return {company:undefined,role:undefined}
+}
 function extractCompanies(text:string){const companies:string[]=[];for(const line of linesOf(text)){const m=line.match(/^(.+?)\s*\([^)]*(?:19\d{2}|20\d{2})[^)]*\)/);if(m?.[1]&&m[1].length>2&&!isHeading(m[1]))companies.push(m[1].trim())}return unique(companies).slice(0,10)}
 function extractSectionFlexible(text:string,headings:string[]){const lines=linesOf(text);const aliases=headings.map(h=>h.toLowerCase());const normalizeHeading=(line:string)=>line.toLowerCase().replace(/^[-•●➢▪◦*\s]+/,'').replace(/\s*\([^)]*\)\s*$/,'').replace(/[:\-]+$/,'').trim();const start=lines.findIndex(line=>aliases.includes(normalizeHeading(line)));if(start<0)return[];const values:string[]=[];for(let i=start+1;i<lines.length&&values.length<60;i++){if(isHeading(lines[i]))break;const value=lines[i].replace(/^[\-–—•●➢▪◦*]\s*/,'').trim();if(value.length>=3&&value.length<=800)values.push(value)}return values}
 function extractCertifications(text:string){return extractSectionFlexible(text,['certifications','certificates','professional certifications'])}
