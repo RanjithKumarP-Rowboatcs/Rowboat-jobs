@@ -90,19 +90,26 @@ function extractDateOfBirth(text: string) { const m=text.match(/(?:date of birth
 function extractPan(text: string) { const m=text.match(/(?:PAN|PAN No\.?|Permanent Account Number)\s*[:\-]?\s*([A-Z]{5}\d{4}[A-Z])/i); return m?.[1]?.toUpperCase() }
 function extractPfStatus(text: string) { if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(active|yes|available|all employment|all employers)\b/i.test(text)||/\b(active|yes)\b[\s\S]{0,80}\b(PF|EPF|provident fund)\b/i.test(text)) return true; if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(no|not active|inactive|not available)\b/i.test(text)) return false; return undefined }
 function extractEducationYear(text: string) {
-  const patterns = [
-    /(?:Ph\\.?\\s*D|Doctorate|Doctor of Philosophy|M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?|B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?|Diploma|Polytechnic)[^\\n]{0,140}?\\b((?:19|20)\\d{2})\\b/gi,
-    /\\b((?:19|20)\\d{2})\\b[^\\n]{0,140}?(?:Ph\\.?\\s*D|Doctorate|Doctor of Philosophy|M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?|B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?|Diploma|Polytechnic)\\b/gi
+  const degreePatterns = [
+    /Ph\\.?\\s*D|Doctorate|Doctor of Philosophy/i,
+    /M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?/i,
+    /B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?/i,
+    /Diploma|Polytechnic/i
   ]
   const years:number[]=[]
-  for(const pattern of patterns){
-    for(const match of text.matchAll(pattern)){
-      const raw=match[1]
-      const n=Number(raw)
-      if(Number.isFinite(n)&&n>=1900&&n<=2100) years.push(n)
-    }
+  for(const pattern of degreePatterns){
+    const match=pattern.exec(text)
+    if(!match) continue
+    const start=Math.max(0,match.index-100)
+    const end=Math.min(text.length,match.index+180)
+    const window=text.slice(start,end)
+    const nearby=[...window.matchAll(/\b((?:19|20)\d{2})\b/g)].map(m=>({year:Number(m[1]),distance:Math.abs((start+(m.index||0))-match.index)}))
+    if(nearby.length) years.push(nearby.sort((a,b)=>a.distance-b.distance)[0].year)
   }
-  return years.length?Math.max(...years):undefined
+  if(years.length)return years[0]
+  const education=extractEducation(text).join(' ')
+  const fallback=[...education.matchAll(/\b((?:19|20)\d{2})\b/g)].map(m=>Number(m[1]))
+  return fallback.length?Math.max(...fallback):undefined
 }
 function extractHighestEducation(text: string) {
   const degrees = [
