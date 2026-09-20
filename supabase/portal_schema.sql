@@ -8,6 +8,12 @@ create table if not exists public.profiles (
   phone text,
   resume_url text,
   linkedin_url text,
+  preferred_location text,
+  date_of_birth date,
+  pan_number text,
+  pf_active_all_employments boolean,
+  highest_education_qualification text,
+  highest_education_year integer,
   company_name text,
   company_website text,
   role text not null default 'candidate' check (role in ('candidate','employer','admin')),
@@ -21,6 +27,12 @@ alter table public.profiles add column if not exists email text;
 alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists resume_url text;
 alter table public.profiles add column if not exists linkedin_url text;
+alter table public.profiles add column if not exists preferred_location text;
+alter table public.profiles add column if not exists date_of_birth date;
+alter table public.profiles add column if not exists pan_number text;
+alter table public.profiles add column if not exists pf_active_all_employments boolean;
+alter table public.profiles add column if not exists highest_education_qualification text;
+alter table public.profiles add column if not exists highest_education_year integer;
 alter table public.profiles add column if not exists company_name text;
 alter table public.profiles add column if not exists company_website text;
 alter table public.profiles add column if not exists role text;
