@@ -54,24 +54,20 @@ function extractLinkedIn(text: string) { const m = text.match(/(?:https?:\/\/)?(
 function isHeading(line: string) { const value = line.toLowerCase().replace(/^[-•●➢▪◦*\s]+/, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/[:\-]+$/, '').trim(); return SECTION_NAMES.some(name => value === name || value.startsWith(`${name} `)) }
 function looksLikeName(value: string) { const line = value.replace(/^[•●➢▪◦*\-\s]+/, '').trim(); const words = line.split(/\s+/).filter(Boolean); if (words.length < 2 || words.length > 5 || line.length > 70 || NAME_STOP.test(line)) return false; if (/@|https?:\/\/|\d|linkedin|phone|email/i.test(line)) return false; return words.every(word => /^[A-Za-z][A-Za-z.'-]*$/.test(word)) }
 function extractName(text: string) {
-  const labeled = extractLabeled(text, ['candidate name','full name','name']);
-  if (labeled && looksLikeName(labeled)) return labeled;
-  const lines = linesOf(text).slice(0, 30);
-  const roleWords = /\b(senior|junior|lead|principal|consultant|engineer|developer|architect|analyst|manager|specialist|professional|software|technology|integration|solution|administrator|basis|cpi|datasphere|hana|full\s*stack|cloud|data|sap)\b/i;
-  const candidates = lines
-    .filter(line => looksLikeName(line))
-    .filter(line => !roleWords.test(line))
-    .filter(line => !/^\d/.test(line));
-  if (candidates.length) return candidates.sort((a,b) => {
-    const ai = lines.indexOf(a);
-    const bi = lines.indexOf(b);
-    const score = (line:string) => {
-      const words = line.split(/\s+/).length;
-      return (words === 2 ? 20 : words === 3 ? 10 : 0) - lines.indexOf(line);
-    };
-    return score(b) - score(a) || ai - bi;
-  })[0];
-  return undefined;
+  const lines = linesOf(text).slice(0, 30)
+  const banned = new Set(['resume','curriculum vitae','cv','professional summary','summary','skills','education','work history','automated deployments','contact','profile','objective'])
+  for (let i=0;i<Math.min(lines.length-1,15);i++) {
+    const a=lines[i], b=lines[i+1]
+    if (/^[A-Z][A-Z.'-]{1,30}$/.test(a) && /^[A-Z][A-Z.'-]{1,30}$/.test(b)) {
+      const candidate = a + ' ' + b
+      if (looksLikeName(candidate) && !banned.has(candidate.toLowerCase())) return candidate
+    }
+  }
+  for (const line of lines) {
+    const value=line.replace(/^[•●➢▪◦*\\-\\s]+/,'').trim()
+    if (!banned.has(value.toLowerCase()) && looksLikeName(value)) return value
+  }
+  return undefined
 }
 function extractSkills(text: string) { const lower = text.toLowerCase(); return unique(SKILLS.filter(skill => lower.includes(skill.toLowerCase()))) }
 function extractLabeled(text: string, labels: string[]) { const label = labels.map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'); return firstMatch(text, [new RegExp(`(?:^|\\n)\\s*(?:${label})\\s*[:\\-]\\s*([^\\n]{2,180})`, 'im')]) }
@@ -79,8 +75,29 @@ function extractPreferredLocation(text: string) { return extractLabeled(text, ['
 function extractDateOfBirth(text: string) { const m=text.match(/(?:date of birth|dob|birth date)\s*[:\-]?\s*(\d{1,2})[\/-](\d{1,2})[\/-]((?:19|20)\d{2})/i); if(m)return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; const n=text.match(/(?:date of birth|dob|birth date)\s*[:\-]?\s*([A-Za-z]{3,9})\s+(\d{1,2}),?\s+((?:19|20)\d{2})/i); if(n){const month=new Date(`${n[1]} 1, 2000`).getMonth()+1; if(month>=1&&month<=12)return `${n[3]}-${String(month).padStart(2,'0')}-${n[2].padStart(2,'0')}`} return undefined }
 function extractPan(text: string) { const m=text.match(/(?:PAN|PAN No\.?|Permanent Account Number)\s*[:\-]?\s*([A-Z]{5}\d{4}[A-Z])/i); return m?.[1]?.toUpperCase() }
 function extractPfStatus(text: string) { if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(active|yes|available|all employment|all employers)\b/i.test(text)||/\b(active|yes)\b[\s\S]{0,80}\b(PF|EPF|provident fund)\b/i.test(text)) return true; if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(no|not active|inactive|not available)\b/i.test(text)) return false; return undefined }
-function extractEducationYear(text: string) { const values=extractEducation(text); const years=values.flatMap(v=>[...v.matchAll(/\b(?:19|20)\d{2}\b/g)].map(m=>Number(m[0]))); return years.length?Math.max(...years):undefined }
-function extractHighestEducation(text: string) { const values=extractEducation(text); if(!values.length)return undefined; const ranked=['phd','doctorate','post doctoral','m.tech','m.e','master','mba','mca','m.sc','b.tech','b.e','bachelor','bca','b.sc','diploma']; const sorted=[...values].sort((a,b)=>{const ra=ranked.findIndex(x=>a.toLowerCase().includes(x));const rb=ranked.findIndex(x=>b.toLowerCase().includes(x));return (ra<0?999:ra)-(rb<0?999:rb)}); return sorted[0] }
+function extractEducationYear(text: string) {
+  const matches = [...text.matchAll(/(?:B\\.Tech|BTech|Bachelor(?:'s)?\\s+of\\s+Technology|B\\.E\\.?|Bachelor(?:'s)?|M\\.Tech|MTech|Master(?:'s)?|MBA|MCA|Ph\\.D|Doctorate)[^\\n]{0,140}?\\b((?:19|20)\\d{2})\\b/gi)]
+  if (matches.length) return Math.max(...matches.map(m => Number(m[1])))
+  const education = extractEducation(text).join(' ')
+  const years = [...education.matchAll(/\\b((?:19|20)\\d{2})\\b/g)].map(m=>Number(m[1]))
+  return years.length ? Math.max(...years) : undefined
+}
+function extractHighestEducation(text: string) {
+  const patterns = [
+    /\\b(Ph\\.?\\s*D|Doctorate|Doctor of Philosophy)\\b[^\\n]{0,120}/i,
+    /\\b(M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?(?:\\s+of[^\\n]{0,40})?)\\b[^\\n]{0,120}/i,
+    /\\b(B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?(?:\\s+of[^\\n]{0,40})?)\\b[^\\n]{0,120}/i,
+    /\\b(Diploma|Polytechnic)\\b[^\\n]{0,100}/i
+  ]
+  for (const pattern of patterns) {
+    const match=text.match(pattern)
+    if (match?.[0]) {
+      const value=match[0].replace(/\\s+/g,' ').trim().replace(/[|•]+$/,'').trim()
+      return value.length>180 ? value.slice(0,180) : value
+    }
+  }
+  return undefined
+}
 function extractLocation(text: string) {
   const labelled = extractLabeled(text, ['current location','location','based in','residing in','current city','city']);
   if (labelled) {
