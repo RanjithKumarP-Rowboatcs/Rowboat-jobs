@@ -55,32 +55,30 @@ function isHeading(line: string) { const value = line.toLowerCase().replace(/^[-
 function looksLikeName(value: string) { const line = value.replace(/^[•●➢▪◦*\-\s]+/, '').trim(); const words = line.split(/\s+/).filter(Boolean); if (words.length < 2 || words.length > 5 || line.length > 70 || NAME_STOP.test(line)) return false; if (/@|https?:\/\/|\d|linkedin|phone|email/i.test(line)) return false; return words.every(word => /^[A-Za-z][A-Za-z.'-]*$/.test(word)) }
 function extractName(text: string) {
   const lines = linesOf(text).slice(0, 30)
-  const banned = new Set(['resume','curriculum vitae','cv','professional summary','summary','skills','education','work history','automated deployments','contact','profile','objective'])
-  const joinedHeader = text.match(/^\s*([A-Z][A-Z.'-]{2,30})\s+(?:professional\s+summary|summary|profile|objective)\s*\n+\s*([A-Z][A-Z.'-]{2,30})\b/i)
-  if (joinedHeader) {
-    const candidate = joinedHeader[1] + ' ' + joinedHeader[2]
-    if (looksLikeName(candidate)) return candidate
-  }
-  const firstLines = text.split(/\n+/).map(v => v.trim()).filter(Boolean).slice(0, 12)
-  for (let i=0;i<firstLines.length;i++) {
-    const line=firstLines[i]
-    const twoWords=line.match(/^([A-Z][A-Z.'-]{2,30})\s+([A-Z][A-Z.'-]{2,30})(?=\s|$)/)
-    if (twoWords) {
-      const candidate=twoWords[1]+' '+twoWords[2]
-      if (looksLikeName(candidate)) return candidate
-    }
-  }
-  for (let i=0;i<Math.min(lines.length-1,15);i++) {
-    const a=lines[i], b=lines[i+1]
-    if (/^[A-Z][A-Z.'-]{1,30}$/.test(a) && /^[A-Z][A-Z.'-]{1,30}$/.test(b)) {
-      const candidate=a+' '+b
+  const banned = new Set(['resume','curriculum vitae','cv','professional summary','summary','skills','education','work history','work experience','automated deployments','contact','profile','objective'])
+  const header = text.split(/\n+/).map(v => v.trim()).filter(Boolean).slice(0, 12)
+
+  // Common resume layout: first and last name are on adjacent uppercase lines.
+  for (let i=0;i<header.length-1;i++) {
+    const a=header[i].replace(/[^A-Za-z.'-]/g,'').trim()
+    const b=header[i+1].replace(/[^A-Za-z.'-]/g,'').trim()
+    if (/^[A-Z][A-Z.'-]{2,30}$/.test(a) && /^[A-Z][A-Z.'-]{2,30}$/.test(b)) {
+      const candidate=\`\${a} \${b}\`
       if (looksLikeName(candidate) && !banned.has(candidate.toLowerCase())) return candidate
     }
   }
-  for (const line of lines) {
-    const value=line.replace(/^[•●➢▪◦*\-\s]+/,'').trim()
-    if (!banned.has(value.toLowerCase()) && looksLikeName(value)) return value
+
+  // Common one-line name layout.
+  for (const line of header) {
+    const value=line.replace(/^[•●➢▪◦*\\-\\s]+/,'').trim()
+    if (banned.has(value.toLowerCase())) continue
+    if (/^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){1,4}$/.test(value) && looksLikeName(value)) return value
   }
+
+  // Explicit labels, when a resume uses them.
+  const labeled = extractLabeled(text, ['candidate name','full name'])
+  if (labeled && looksLikeName(labeled) && !banned.has(labeled.toLowerCase())) return labeled
+
   return undefined
 }
 function extractSkills(text: string) { const lower = text.toLowerCase(); return unique(SKILLS.filter(skill => lower.includes(skill.toLowerCase()))) }
@@ -90,39 +88,25 @@ function extractDateOfBirth(text: string) { const m=text.match(/(?:date of birth
 function extractPan(text: string) { const m=text.match(/(?:PAN|PAN No\.?|Permanent Account Number)\s*[:\-]?\s*([A-Z]{5}\d{4}[A-Z])/i); return m?.[1]?.toUpperCase() }
 function extractPfStatus(text: string) { if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(active|yes|available|all employment|all employers)\b/i.test(text)||/\b(active|yes)\b[\s\S]{0,80}\b(PF|EPF|provident fund)\b/i.test(text)) return true; if(/\b(PF|EPF|provident fund)\b[\s\S]{0,80}\b(no|not active|inactive|not available)\b/i.test(text)) return false; return undefined }
 function extractEducationYear(text: string) {
-  const degreePatterns = [
-    /Ph\\.?\\s*D|Doctorate|Doctor of Philosophy/i,
-    /M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?/i,
-    /B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?/i,
-    /Diploma|Polytechnic/i
-  ]
-  const years:number[]=[]
-  for(const pattern of degreePatterns){
-    const match=pattern.exec(text)
-    if(!match) continue
-    const start=Math.max(0,match.index-100)
-    const end=Math.min(text.length,match.index+180)
-    const window=text.slice(start,end)
-    const nearby=[...window.matchAll(/\\b((?:19|20)\\d{2})\\b/g)].map(m=>({year:Number(m[1]),distance:Math.abs((start+(m.index||0))-match.index)}))
-    if(nearby.length) years.push(nearby.sort((a,b)=>a.distance-b.distance)[0].year)
-  }
-  if(years.length)return years[0]
-  const education=extractEducation(text).join(' ')
-  const fallback=[...education.matchAll(/\\b((?:19|20)\\d{2})\\b/g)].map(m=>Number(m[1]))
-  return fallback.length?Math.max(...fallback):undefined
+  const section = extractEducation(text).join(' ')
+  const degreeFirst = section.match(/\b(?:Ph\.?\s*D|Doctorate|M\.?\s*Tech|MTech|M\.?\s*E\.?|MBA|MCA|M\.?\s*Sc|Master(?:'s)?|B\.?\s*Tech|BTech|B\.?\s*E\.?|BCA|B\.?\s*Sc|Bachelor(?:'s)?|Diploma|Polytechnic)\b[\s\S]{0,180}?\b((?:19|20)\d{2})\b/i)
+  if (degreeFirst) return Number(degreeFirst[1])
+  const years=[...section.matchAll(/\b((?:19|20)\d{2})\b/g)].map(m=>Number(m[1]))
+  return years.length ? Math.max(...years) : undefined
 }
 function extractHighestEducation(text: string) {
+  const section = extractEducation(text).join(' ')
   const degrees = [
-    {rank:5,pattern:/\\b(?:Ph\\.?\\s*D|Doctorate|Doctor of Philosophy)\\b/i,label:"Ph.D"},
-    {rank:4,pattern:/\\b(?:M\\.?\\s*Tech|MTech|M\\.?\\s*E\\.?|MBA|MCA|M\\.?\\s*Sc|Master(?:'s)?\\b)/i,label:"Master"},
-    {rank:3,pattern:/\\b(?:B\\.?\\s*Tech|BTech|B\\.?\\s*E\\.?|BCA|B\\.?\\s*Sc|Bachelor(?:'s)?\\b)/i,label:"Bachelor"},
-    {rank:2,pattern:/\\b(?:Diploma|Polytechnic)\\b/i,label:"Diploma"}
+    {rank:5,pattern:/\b(?:Ph\.?\s*D|Doctorate|Doctor of Philosophy)\b/i,label:'Ph.D'},
+    {rank:4,pattern:/\b(?:M\.?\s*Tech|MTech|M\.?\s*E\.?|MBA|MCA|M\.?\s*Sc|Master(?:'s)?\b)/i,label:'Master'},
+    {rank:3,pattern:/\b(?:B\.?\s*Tech|BTech|B\.?\s*E\.?|BCA|B\.?\s*Sc|Bachelor(?:'s)?\b)/i,label:'Bachelor'},
+    {rank:2,pattern:/\b(?:Diploma|Polytechnic)\b/i,label:'Diploma'}
   ]
-  const found = degrees.map(d => ({...d,match:text.match(d.pattern)})).filter(d=>d.match)
+  const found=degrees.map(d=>({...d,match:section.match(d.pattern)})).filter(d=>d.match)
   if(!found.length)return undefined
   found.sort((a,b)=>b.rank-a.rank)
   const top=found[0]
-  if(top.label==="Bachelor"&&/B\\.?\\s*Tech|BTech/i.test(top.match?.[0]||'')) return "Bachelor of Technology (B.Tech)"
+  if(top.label==='Bachelor'&&/(B\.?\s*Tech|BTech)/i.test(top.match?.[0]||''))return 'Bachelor of Technology (B.Tech)'
   return top.label
 }
 function extractLocation(text: string) {
