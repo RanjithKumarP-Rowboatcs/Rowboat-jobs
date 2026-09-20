@@ -63,7 +63,7 @@ function extractName(text: string) {
     const a=header[i].replace(/[^A-Za-z.'-]/g,'').trim()
     const b=header[i+1].replace(/[^A-Za-z.'-]/g,'').trim()
     if (/^[A-Z][A-Z.'-]{2,30}$/.test(a) && /^[A-Z][A-Z.'-]{2,30}$/.test(b)) {
-      const candidate=\`\${a} \${b}\`
+      const candidate=`${a} ${b}`
       if (looksLikeName(candidate) && !banned.has(candidate.toLowerCase())) return candidate
     }
   }
