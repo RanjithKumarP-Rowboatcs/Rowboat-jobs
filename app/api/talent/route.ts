@@ -1,1 +1,1 @@
-export { GET, PUT, POST, PATCH, dynamic, runtime } from '../talent-fixed/route'
+export { GET, PUT, POST, PATCH } from '../talent-fixed/route'
