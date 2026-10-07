@@ -20,7 +20,7 @@ function cleanJob(input: Record<string, unknown>) {
     requirements: String(input.requirements || '').trim() || null,
     responsibilities: String(input.responsibilities || '').trim() || null,
     skills: Array.isArray(input.skills) ? input.skills.map(String).map(s => s.trim()).filter(Boolean) : [],
-    apply_email: String(input.apply_email || '').trim() || null,
+    apply_email: String(input.apply_email || '').trim() || 'info@rowboatcs.com',
     reference_code: String(input.reference_code || '').trim() || null,
     status: ['draft', 'open', 'closed'].includes(String(input.status)) ? String(input.status) : 'draft',
   }
